@@ -116,7 +116,7 @@ pinme rm
 pinme rm bafybeifdwyoz66u5czbbjvmmais5fzrzrolxbyiydqsbrxessndt3s6zdi
 ```
 
-**Note:** This action permanently removes content from the IPFS network. Make sure you have the correct IPFS hash before proceeding.
+**Note:** This action unpins the content from our IPFS node and deletes the ENS subdomain record. It does not ensure that the file is removed from the IPFS network.
 
 ### `list` / `ls`
 
