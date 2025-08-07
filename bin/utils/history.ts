@@ -104,7 +104,7 @@ const displayUploadHistory = (limit: number = 10): void => {
   console.log(chalk.cyan('Upload History:'));
   console.log(chalk.cyan('-'.repeat(80)));
   
-  // 显示最近的记录，最多显示limit条
+  // Display recent records, up to limit records
   const recentHistory = history.slice(-limit);
   
   recentHistory.forEach((item, index) => {
