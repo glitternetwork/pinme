@@ -21,7 +21,7 @@ function isValidIPFSHash(hash: string): boolean {
   return v0Pattern.test(hash) || v1Pattern.test(hash) || v1kPattern.test(hash) || v1bePattern.test(hash);
 }
 
-// Validate subname format (简单的字母数字组合)
+// Validate subname format (simple alphanumeric combination)
 function isValidSubname(subname: string): boolean {
   const subnamePattern = /^[a-zA-Z0-9]{6,12}$/;
   return subnamePattern.test(subname);

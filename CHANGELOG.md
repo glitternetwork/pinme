@@ -9,3 +9,12 @@
 ### Improvements
 - Optimized upload timeout configuration for better network connection stability
 - Unified command-line interface font display effects
+
+## v1.1.2 (2025-08-07)
+
+### Bug Fixes
+- Fixed issue where uploaded folders could not be found after upload
+
+### Improvements
+- Optimized client-side upload 524 error handling
+- Enhanced upload process flow and user experience
