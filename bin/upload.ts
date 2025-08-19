@@ -2,7 +2,7 @@ import path from 'path';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import figlet from 'figlet';
-import upload from './utils/uploadToIpfs';
+import upload from './utils/uploadToIpfsSplit';
 import fs from 'fs';
 import CryptoJS from 'crypto-js';
 
@@ -84,11 +84,12 @@ export default async (options?: UploadOptions): Promise<void> => {
           );
           console.log(chalk.cyan(`URL:`));
           console.log(chalk.cyan(`${URL}${encryptedCID}`));
+          console.log(chalk.green('\n🎉 upload successful, program exit'));
         }
       } catch (error: any) {
         console.error(chalk.red(`Error: ${error.message}`));
       }
-      return;
+      process.exit(0);
     }
 
     const answer = await inquirer.prompt([
@@ -120,10 +121,12 @@ export default async (options?: UploadOptions): Promise<void> => {
           );
           console.log(chalk.cyan(`URL:`));
           console.log(chalk.cyan(`${URL}${encryptedCID}`));
+          console.log(chalk.green('\n🎉 upload successful, program exit'));
         }
       } catch (error: any) {
         console.error(chalk.red(`Error: ${error.message}`));
       }
+      process.exit(0);
     }
   } catch (error: any) {
     console.error(chalk.red(`error executing: ${error.message}`));

@@ -30,7 +30,7 @@ interface UploadData {
   path: string;
   filename?: string;
   contentHash: string;
-  previewHash: string | null;
+  previewHash?: string | null;
   size: number;
   fileCount?: number;
   isDirectory?: boolean;
