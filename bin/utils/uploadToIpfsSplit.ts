@@ -21,7 +21,7 @@ const MAX_POLL_TIME = parseInt(process.env.MAX_POLL_TIME_MINUTES || '5') * 60 * 
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_SECONDS || '2') * 1000;
 const PROGRESS_UPDATE_INTERVAL = 200; // ms
 const EXPECTED_UPLOAD_TIME = 60000; // 60 seconds
-const MAX_PROGRESS = 0.95; // 95%
+const MAX_PROGRESS = 0.90; // 90%
 
 // Type definitions
 interface ChunkSessionResponse {
@@ -79,6 +79,8 @@ class StepProgressBar {
   private currentStep: number = 0;
   private stepStartTime: number = 0;
   private progressInterval: NodeJS.Timeout | null = null;
+  private isSimulatingProgress: boolean = false;
+  private simulationStartTime: number = 0;
 
   constructor(fileName: string, isDirectory: boolean = false) {
     this.fileName = fileName;
@@ -102,6 +104,17 @@ class StepProgressBar {
     // Step completed, let auto progress continue
   }
 
+  // 开始模拟进度，用于在90%后继续显示进度
+  startSimulatingProgress(): void {
+    this.isSimulatingProgress = true;
+    this.simulationStartTime = Date.now();
+  }
+
+  // 停止模拟进度
+  stopSimulatingProgress(): void {
+    this.isSimulatingProgress = false;
+  }
+
   failStep(error: string): void {
     this.stopProgress();
     this.spinner.fail(`Upload failed: ${error}`);
@@ -123,9 +136,18 @@ class StepProgressBar {
   private startProgress(): void {
     this.progressInterval = setInterval(() => {
       const elapsed = Date.now() - this.startTime;
-      const progress = this.calculateProgress(elapsed);
-      const duration = this.formatDuration(Math.floor(elapsed / 1000));
+      let progress: number;
       
+      if (this.isSimulatingProgress) {
+        // 在90%后模拟进度，从90%慢慢增长到99%
+        const simulationElapsed = Date.now() - this.simulationStartTime;
+        const simulationProgress = Math.min(simulationElapsed / 60000, 1); // 60秒内从90%到99%
+        progress = 0.90 + (simulationProgress * 0.09); // 90% + 9% = 99%
+      } else {
+        progress = this.calculateProgress(elapsed);
+      }
+      
+      const duration = this.formatDuration(Math.floor(elapsed / 1000));
       const progressBar = this.createProgressBar(progress);
       this.spinner.text = `Uploading ${this.fileName}... ${progressBar} ${Math.round(progress * 100)}% (${duration})`;
     }, PROGRESS_UPDATE_INTERVAL);
@@ -462,33 +484,50 @@ async function getChunkStatus(
 async function monitorChunkProgress(
   traceId: string,
   deviceId: string,
+  progressBar?: StepProgressBar,
 ): Promise<UploadResult | null> {
   let consecutiveErrors = 0;
   const startTime = Date.now();
 
-  while (Date.now() - startTime < MAX_POLL_TIME) {
-    try {
-      const status = await getChunkStatus(traceId, deviceId);
-      consecutiveErrors = 0;
-
-      if (status.is_ready && status.upload_rst.Hash) {
-        return {
-          hash: status.upload_rst.Hash,
-          shortUrl: status.upload_rst.ShortUrl,
-        };
-      }
-    } catch (error: any) {
-      consecutiveErrors++;
-      if (consecutiveErrors > 10) {
-        throw new Error(`Polling failed: ${error.message}`);
-      }
-    }
-
-    await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+  // 启动模拟进度
+  if (progressBar) {
+    progressBar.startSimulatingProgress();
   }
 
-  const maxPollTimeMinutes = Math.floor(MAX_POLL_TIME / (60 * 1000));
-  throw new Error(`Polling timeout after ${maxPollTimeMinutes} minutes`);
+  try {
+    while (Date.now() - startTime < MAX_POLL_TIME) {
+      try {
+        const status = await getChunkStatus(traceId, deviceId);
+        consecutiveErrors = 0;
+
+        if (status.is_ready && status.upload_rst.Hash) {
+          // 停止模拟进度
+          if (progressBar) {
+            progressBar.stopSimulatingProgress();
+          }
+          return {
+            hash: status.upload_rst.Hash,
+            shortUrl: status.upload_rst.ShortUrl,
+          };
+        }
+      } catch (error: any) {
+        consecutiveErrors++;
+        if (consecutiveErrors > 10) {
+          throw new Error(`Polling failed: ${error.message}`);
+        }
+      }
+
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+    }
+
+    const maxPollTimeMinutes = Math.floor(MAX_POLL_TIME / (60 * 1000));
+    throw new Error(`Polling timeout after ${maxPollTimeMinutes} minutes`);
+  } finally {
+    // 确保停止模拟进度
+    if (progressBar) {
+      progressBar.stopSimulatingProgress();
+    }
+  }
 }
 
 // Main upload functions
@@ -530,7 +569,7 @@ async function uploadDirectoryInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(4, 'Waiting for processing');
-    const result = await monitorChunkProgress(traceId, deviceId);
+    const result = await monitorChunkProgress(traceId, deviceId, progressBar);
     progressBar.completeStep();
 
     // Cleanup
@@ -599,7 +638,7 @@ async function uploadFileInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(3, 'Waiting for processing');
-    const result = await monitorChunkProgress(traceId, deviceId);
+    const result = await monitorChunkProgress(traceId, deviceId, progressBar);
     progressBar.completeStep();
 
     // Save history
