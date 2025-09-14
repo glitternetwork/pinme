@@ -10,6 +10,9 @@ import CryptoJS from 'crypto-js';
 const URL = process.env.IPFS_PREVIEW_URL;
 const secretKey = process.env.SECRET_KEY;
 
+import { checkNodeVersion } from './utils/checkNodeVersion';
+checkNodeVersion();
+
 // encrypt the hash
 function encryptHash(hash: string, key: string | undefined): string {
   try {

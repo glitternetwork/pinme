@@ -7,6 +7,9 @@ interface RemoveOptions {
   [key: string]: any;
 }
 
+import { checkNodeVersion } from './utils/checkNodeVersion';
+checkNodeVersion();
+
 // Validate IPFS hash format
 function isValidIPFSHash(hash: string): boolean {
   // IPFS v0 hash (Qm...)

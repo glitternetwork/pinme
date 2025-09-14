@@ -2,6 +2,9 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+import { checkNodeVersion } from './utils/checkNodeVersion';
+checkNodeVersion();
+
 import { Command } from "commander";
 import chalk from "chalk";
 import figlet from "figlet";
