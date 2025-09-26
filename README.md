@@ -1,16 +1,9 @@
 # PinMe
 
-[PinMe](https://pinme.eth.limo/) is a simple and easy-to-use command-line tool for uploading files and directories to the [IPFS](https://ipfs.tech/) network.
+[PinMe](https://pinme.eth.limo/) is a one-command deploy tool that turns static sites into permanent, verifiable frontends by pinning to [IPFS](https://ipfs.tech/), writing contenthash to [ENS](https://ens.domains/) subnames, and serving through gateways like [eth.limo](https://eth.limo/)—no DNS, no servers.
 
 Website：[https://pinme.eth.limo/](https://pinme.eth.limo/)
 
-## Features
-
-- 🚀 Quickly upload files and directories to IPFS
-- 📂 Support for various file types and sizes
-- 📊 View and manage upload history
-- 🔗 Automatically generate accessible IPFS links
-- 🌐 Preview uploaded content
 
 ## Installation
 
