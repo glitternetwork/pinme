@@ -202,14 +202,15 @@ async function calculateMD5(filePath: string): Promise<string> {
 
 async function compressDirectory(sourcePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const tempDir = path.join(process.cwd(), 'temp');
+    // Use system temp directory instead of project directory to avoid recursive inclusion
+    const tempDir = require('os').tmpdir();
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
     const outputPath = path.join(
       tempDir,
-      `${path.basename(sourcePath)}_${Date.now()}.zip`,
+      `pinme_${path.basename(sourcePath)}_${Date.now()}.zip`,
     );
     const output = fs.createWriteStream(outputPath);
 
