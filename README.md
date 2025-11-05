@@ -1,3 +1,16 @@
+<p align="center">
+  <a href="https://pinme.eth.limo/">
+    <img src="https://2egc5b44.pinit.eth.limo/" height="92">
+    <h3 align="center">PinMe</h3>
+  </a>
+</p>
+
+<p align="center">
+  Deploy your site in one command.
+</p>
+
+<br/>
+
 # PinMe
 
 [PinMe](https://pinme.eth.limo/) is a one-command deploy tool that turns static sites into permanent, verifiable frontends by pinning to [IPFS](https://ipfs.tech/), writing contenthash to [ENS](https://ens.domains/) subnames, and serving through gateways like [eth.limo](https://eth.limo/)—no DNS, no servers.
