@@ -21,7 +21,7 @@ const MAX_POLL_TIME = parseInt(process.env.MAX_POLL_TIME_MINUTES || '5') * 60 * 
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_SECONDS || '2') * 1000;
 const PROGRESS_UPDATE_INTERVAL = 200; // ms
 const EXPECTED_UPLOAD_TIME = 60000; // 60 seconds
-const MAX_PROGRESS = 0.95; // 95%
+const MAX_PROGRESS = 0.90; // 90%
 
 // Type definitions
 interface ChunkSessionResponse {
@@ -79,6 +79,8 @@ class StepProgressBar {
   private currentStep: number = 0;
   private stepStartTime: number = 0;
   private progressInterval: NodeJS.Timeout | null = null;
+  private isSimulatingProgress: boolean = false;
+  private simulationStartTime: number = 0;
 
   constructor(fileName: string, isDirectory: boolean = false) {
     this.fileName = fileName;
@@ -102,6 +104,17 @@ class StepProgressBar {
     // Step completed, let auto progress continue
   }
 
+  // Start simulating progress to continue display after 90%
+  startSimulatingProgress(): void {
+    this.isSimulatingProgress = true;
+    this.simulationStartTime = Date.now();
+  }
+
+  // Stop simulating progress
+  stopSimulatingProgress(): void {
+    this.isSimulatingProgress = false;
+  }
+
   failStep(error: string): void {
     this.stopProgress();
     this.spinner.fail(`Upload failed: ${error}`);
@@ -123,9 +136,18 @@ class StepProgressBar {
   private startProgress(): void {
     this.progressInterval = setInterval(() => {
       const elapsed = Date.now() - this.startTime;
-      const progress = this.calculateProgress(elapsed);
-      const duration = this.formatDuration(Math.floor(elapsed / 1000));
+      let progress: number;
       
+      if (this.isSimulatingProgress) {
+        // Simulate progress after 90%, gradually grow from 90% to 99%
+        const simulationElapsed = Date.now() - this.simulationStartTime;
+        const simulationProgress = Math.min(simulationElapsed / 60000, 1); // From 90% to 99% within 60 seconds
+        progress = 0.90 + (simulationProgress * 0.09); // 90% + 9% = 99%
+      } else {
+        progress = this.calculateProgress(elapsed);
+      }
+      
+      const duration = this.formatDuration(Math.floor(elapsed / 1000));
       const progressBar = this.createProgressBar(progress);
       this.spinner.text = `Uploading ${this.fileName}... ${progressBar} ${Math.round(progress * 100)}% (${duration})`;
     }, PROGRESS_UPDATE_INTERVAL);
@@ -180,14 +202,15 @@ async function calculateMD5(filePath: string): Promise<string> {
 
 async function compressDirectory(sourcePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const tempDir = path.join(process.cwd(), 'temp');
+    // Use system temp directory instead of project directory to avoid recursive inclusion
+    const tempDir = require('os').tmpdir();
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
     const outputPath = path.join(
       tempDir,
-      `${path.basename(sourcePath)}_${Date.now()}.zip`,
+      `pinme_${path.basename(sourcePath)}_${Date.now()}.zip`,
     );
     const output = fs.createWriteStream(outputPath);
 
@@ -462,33 +485,50 @@ async function getChunkStatus(
 async function monitorChunkProgress(
   traceId: string,
   deviceId: string,
+  progressBar?: StepProgressBar,
 ): Promise<UploadResult | null> {
   let consecutiveErrors = 0;
   const startTime = Date.now();
 
-  while (Date.now() - startTime < MAX_POLL_TIME) {
-    try {
-      const status = await getChunkStatus(traceId, deviceId);
-      consecutiveErrors = 0;
-
-      if (status.is_ready && status.upload_rst.Hash) {
-        return {
-          hash: status.upload_rst.Hash,
-          shortUrl: status.upload_rst.ShortUrl,
-        };
-      }
-    } catch (error: any) {
-      consecutiveErrors++;
-      if (consecutiveErrors > 10) {
-        throw new Error(`Polling failed: ${error.message}`);
-      }
-    }
-
-    await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+  // Start simulating progress
+  if (progressBar) {
+    progressBar.startSimulatingProgress();
   }
 
-  const maxPollTimeMinutes = Math.floor(MAX_POLL_TIME / (60 * 1000));
-  throw new Error(`Polling timeout after ${maxPollTimeMinutes} minutes`);
+  try {
+    while (Date.now() - startTime < MAX_POLL_TIME) {
+      try {
+        const status = await getChunkStatus(traceId, deviceId);
+        consecutiveErrors = 0;
+
+        if (status.is_ready && status.upload_rst.Hash) {
+          // Stop simulating progress
+          if (progressBar) {
+            progressBar.stopSimulatingProgress();
+          }
+          return {
+            hash: status.upload_rst.Hash,
+            shortUrl: status.upload_rst.ShortUrl,
+          };
+        }
+      } catch (error: any) {
+        consecutiveErrors++;
+        if (consecutiveErrors > 10) {
+          throw new Error(`Polling failed: ${error.message}`);
+        }
+      }
+
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+    }
+
+    const maxPollTimeMinutes = Math.floor(MAX_POLL_TIME / (60 * 1000));
+    throw new Error(`Polling timeout after ${maxPollTimeMinutes} minutes`);
+  } finally {
+    // Ensure simulating progress is stopped
+    if (progressBar) {
+      progressBar.stopSimulatingProgress();
+    }
+  }
 }
 
 // Main upload functions
@@ -530,7 +570,7 @@ async function uploadDirectoryInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(4, 'Waiting for processing');
-    const result = await monitorChunkProgress(traceId, deviceId);
+    const result = await monitorChunkProgress(traceId, deviceId, progressBar);
     progressBar.completeStep();
 
     // Cleanup
@@ -599,7 +639,7 @@ async function uploadFileInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(3, 'Waiting for processing');
-    const result = await monitorChunkProgress(traceId, deviceId);
+    const result = await monitorChunkProgress(traceId, deviceId, progressBar);
     progressBar.completeStep();
 
     // Save history
