@@ -104,13 +104,13 @@ class StepProgressBar {
     // Step completed, let auto progress continue
   }
 
-  // 开始模拟进度，用于在90%后继续显示进度
+  // Start simulating progress to continue display after 90%
   startSimulatingProgress(): void {
     this.isSimulatingProgress = true;
     this.simulationStartTime = Date.now();
   }
 
-  // 停止模拟进度
+  // Stop simulating progress
   stopSimulatingProgress(): void {
     this.isSimulatingProgress = false;
   }
@@ -139,9 +139,9 @@ class StepProgressBar {
       let progress: number;
       
       if (this.isSimulatingProgress) {
-        // 在90%后模拟进度，从90%慢慢增长到99%
+        // Simulate progress after 90%, gradually grow from 90% to 99%
         const simulationElapsed = Date.now() - this.simulationStartTime;
-        const simulationProgress = Math.min(simulationElapsed / 60000, 1); // 60秒内从90%到99%
+        const simulationProgress = Math.min(simulationElapsed / 60000, 1); // From 90% to 99% within 60 seconds
         progress = 0.90 + (simulationProgress * 0.09); // 90% + 9% = 99%
       } else {
         progress = this.calculateProgress(elapsed);
@@ -490,7 +490,7 @@ async function monitorChunkProgress(
   let consecutiveErrors = 0;
   const startTime = Date.now();
 
-  // 启动模拟进度
+  // Start simulating progress
   if (progressBar) {
     progressBar.startSimulatingProgress();
   }
@@ -502,7 +502,7 @@ async function monitorChunkProgress(
         consecutiveErrors = 0;
 
         if (status.is_ready && status.upload_rst.Hash) {
-          // 停止模拟进度
+          // Stop simulating progress
           if (progressBar) {
             progressBar.stopSimulatingProgress();
           }
@@ -524,7 +524,7 @@ async function monitorChunkProgress(
     const maxPollTimeMinutes = Math.floor(MAX_POLL_TIME / (60 * 1000));
     throw new Error(`Polling timeout after ${maxPollTimeMinutes} minutes`);
   } finally {
-    // 确保停止模拟进度
+    // Ensure simulating progress is stopped
     if (progressBar) {
       progressBar.stopSimulatingProgress();
     }
