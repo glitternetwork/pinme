@@ -41,7 +41,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* 响应式设计 */
+/* Responsive design */
 @media (max-width: 640px) {
   .home-card {
     max-width: 100%;

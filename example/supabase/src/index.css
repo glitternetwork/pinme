@@ -1,4 +1,4 @@
-/* 基础样式 */
+/* Base styles */
 :root {
   --primary-color: #4F46E5;
   --primary-hover: #4338CA;
@@ -29,7 +29,7 @@ body {
   padding: 2rem 1rem;
 }
 
-/* 按钮样式 */
+/* Button styles */
 .btn {
   display: inline-block;
   padding: 0.5rem 1rem;
@@ -59,7 +59,7 @@ body {
   background-color: var(--dark-gray);
 }
 
-/* 表单元素 */
+/* Form elements */
 input[type="text"],
 input[type="email"],
 input[type="password"] {
@@ -79,7 +79,7 @@ input[type="password"]:focus {
   outline: none;
 }
 
-/* 卡片样式 */
+/* Card styles */
 .card {
   background-color: white;
   border-radius: var(--border-radius);
@@ -87,7 +87,7 @@ input[type="password"]:focus {
   overflow: hidden;
 }
 
-/* 工具类 */
+/* Utility classes */
 .text-center {
   text-align: center;
 }
@@ -104,7 +104,7 @@ input[type="password"]:focus {
 .mt-4 { margin-top: 1.5rem; }
 .mt-5 { margin-top: 2rem; }
 
-/* 自定义滚动条 */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }

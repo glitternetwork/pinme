@@ -8,7 +8,7 @@
   flex: 1;
 }
 
-/* 如果需要添加页脚 */
+/* If footer needs to be added */
 .footer {
   margin-top: auto;
   padding: 1rem;
