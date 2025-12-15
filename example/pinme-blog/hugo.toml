@@ -1,4 +1,4 @@
-languageCode = "zh-cn"
+languageCode = "en-us"
 title = "PINME Blog"
 theme = "PaperMod"
 baseURL = "./"  

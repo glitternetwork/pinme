@@ -13,9 +13,17 @@
 
 # PinMe
 
-[PinMe](https://pinme.eth.limo/) is a one-command deploy tool that turns static sites into permanent, verifiable frontends by pinning to [IPFS](https://ipfs.tech/), writing contenthash to [ENS](https://ens.domains/) subnames, and serving through gateways like [eth.limo](https://eth.limo/)—no DNS, no servers.
+[PinMe](https://pinme.eth.limo/) is a zero-config frontend deployment tool.
+No servers. No accounts. No setup.
 
-Website：[https://pinme.eth.limo/](https://pinme.eth.limo/)
+Build a static site, generate a page with AI, or export your frontend — then deploy instantly with a single command.
+
+PinMe publishes your site as verifiable content, making silent tampering and accidental breakage far harder than traditional hosting.
+
+You don’t manage servers, regions, or uptime.
+PinMe handles availability and persistence for you.
+
+Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 
 
 ## Installation
