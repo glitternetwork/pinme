@@ -251,8 +251,8 @@ pinme help
 
 ## Upload Limits
 
-- Single file size limit: 20MB
-- Total directory size limit: 500MB
+- Single file size limit: 200MB (free plan)
+- Total directory size limit: 1GB (free plan)
 
 ## File Storage
 
