@@ -39,7 +39,7 @@ export interface CheckDomainResult {
 
 export async function checkDomainAvailable(domainName: string): Promise<CheckDomainResult> {
   const client = createClient();
-  // 端点可能未固定，优先使用环境变量，其次尝试两个常见路径
+  // Endpoint may not be fixed, prioritize environment variable, then try two common paths
   const configured = process.env.PINME_CHECK_DOMAIN_PATH || '/check_domain';
   const fallbacks = [configured, '/check_domain_available'];
 
@@ -52,12 +52,12 @@ export async function checkDomainAvailable(domainName: string): Promise<CheckDom
       if (data?.data && typeof data.data.is_valid === 'boolean') {
         return { is_valid: data.data.is_valid, error: data.data?.error };
       }
-      // 不符合预期结构，继续尝试下一个路径
+      // Unexpected structure, continue trying next path
     } catch (e: any) {
-      // 404/405/500 等继续尝试下一个
+      // 404/405/500 etc., continue trying next path
     }
   }
-  // 如果所有尝试失败，则返回未知状态，交由后续 bind 返回报错提示
+  // If all attempts fail, return unknown state, let subsequent bind return error message
   return { is_valid: true };
 }
 

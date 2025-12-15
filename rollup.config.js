@@ -7,7 +7,7 @@ const copy = require('rollup-plugin-copy');
 const path = require('path');
 const fs = require('fs');
 
-// 确保dist目录存在
+// Ensure dist directory exists
 const distDir = path.resolve(__dirname, 'dist');
 if (!fs.existsSync(distDir)) {
   fs.mkdirSync(distDir, { recursive: true });
@@ -22,7 +22,7 @@ module.exports = {
     banner: '#!/usr/bin/env node',
     sourcemap: false,
   },
-  // 将所有npm依赖项设为外部依赖，不打包进最终文件
+  // Set all npm dependencies as external, don't bundle into final file
   external: [
     ...Object.keys(require('./package.json').dependencies || {}),
     ...require('module').builtinModules,
@@ -32,15 +32,15 @@ module.exports = {
       tsconfig: './tsconfig.json',
       sourceMap: false
     }),
-    // 解析第三方模块
+    // Resolve third-party modules
     nodeResolve({
       preferBuiltins: true,
     }),
-    // 转换CommonJS模块为ES模块
+    // Convert CommonJS modules to ES modules
     commonjs(),
-    // 支持导入JSON文件
+    // Support importing JSON files
     json(),
-    // 压缩代码
+    // Minify code
     terser({
       format: {
         comments: false,
@@ -50,7 +50,7 @@ module.exports = {
         drop_debugger: true,
       },
     }),
-    // 自定义插件：确保生成的文件有执行权限
+    // Custom plugin: ensure generated file has executable permissions
     {
       name: 'make-executable',
       writeBundle() {
@@ -65,7 +65,7 @@ module.exports = {
     }
   ],
   onwarn(warning, warn) {
-    // 忽略某些警告
+    // Ignore certain warnings
     if (warning.code === 'CIRCULAR_DEPENDENCY') return;
     if (warning.code === 'UNRESOLVED_IMPORT' && warning.source.startsWith('node:')) return;
     warn(warning);

@@ -45,7 +45,7 @@ export default async function bindCmd(): Promise<void> {
       return;
     }
 
-    // 前置校验域名
+    // Pre-check domain availability
     const check = await checkDomainAvailable(domain);
     if (!check.is_valid) {
       console.log(chalk.red(`Domain not available: ${check.error || 'unknown reason'}`));
@@ -53,7 +53,7 @@ export default async function bindCmd(): Promise<void> {
     }
     console.log(chalk.green(`Domain available: ${domain}`));
 
-    // 上传
+    // Upload
     const absolutePath = path.resolve(targetPath);
     console.log(chalk.blue(`Uploading: ${absolutePath}`));
     const up = await upload(absolutePath);
@@ -63,7 +63,7 @@ export default async function bindCmd(): Promise<void> {
     }
     console.log(chalk.green(`Upload success, CID: ${up.contentHash}`));
 
-    // 绑定
+    // Bind domain
     const ok = await bindPinmeDomain(domain, up.contentHash);
     if (!ok) {
       console.log(chalk.red('Binding failed. Please try again later.'));
