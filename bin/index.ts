@@ -13,6 +13,8 @@ import { version } from '../package.json';
 import upload from './upload';
 import remove from './remove';
 import { displayUploadHistory, clearUploadHistory } from './utils/history';
+import setAppKeyCmd from './set-appkey';
+import myDomainsCmd from './my-domains';
 
 // display the ASCII art logo
 function showBanner(): void {
@@ -33,13 +35,30 @@ program
 
 program
     .command('upload')
-    .description("upload a file or directory to IPFS")
+    .description("upload a file or directory to IPFS. Supports --domain to bind after upload")
+    .option('-d, --domain <name>', 'Pinme subdomain')
     .action(() => upload());
 
 program
     .command('rm')
     .description("remove a file from IPFS network")
     .action(() => remove());
+
+program
+    .command('set-appkey')
+    .description("Set AppKey for authentication, and auto-merge anonymous history")
+    .action(() => setAppKeyCmd());
+
+program
+    .command('my-domains')
+    .alias('domain')
+    .description("List domains owned by current account")
+    .action(() => myDomainsCmd());
+
+program
+    .command('domain')
+    .description("Alias for 'my-domains' command")
+    .action(() => myDomainsCmd());
 
 program
     .command('list')
@@ -82,7 +101,11 @@ program.on('--help', () => {
   console.log('');
   console.log('Examples:');
   console.log('  $ pinme upload');
+  console.log('  $ pinme upload <path> --domain <name>');
   console.log('  $ pinme rm <hash>');
+  console.log('  $ pinme set-appkey <AppKey>');
+  console.log('  $ pinme my-domains');
+  console.log('  $ pinme domain');
   console.log('  $ pinme list -l 5');
   console.log('  $ pinme ls');
   console.log('  $ pinme help');
