@@ -11,6 +11,7 @@ import figlet from "figlet";
 import { version } from '../package.json';
 
 import upload from './upload';
+import importFile from './import';
 import remove from './remove';
 import { displayUploadHistory, clearUploadHistory } from './utils/history';
 import setAppKeyCmd from './set-appkey';
@@ -38,6 +39,12 @@ program
     .description("upload a file or directory to IPFS. Supports --domain to bind after upload")
     .option('-d, --domain <name>', 'Pinme subdomain')
     .action(() => upload());
+
+program
+    .command('import')
+    .description("import a CAR file to IPFS. Supports --domain to bind after import")
+    .option('-d, --domain <name>', 'Pinme subdomain')
+    .action(() => importFile());
 
 program
     .command('rm')
@@ -102,6 +109,8 @@ program.on('--help', () => {
   console.log('Examples:');
   console.log('  $ pinme upload');
   console.log('  $ pinme upload <path> --domain <name>');
+  console.log('  $ pinme import');
+  console.log('  $ pinme import <path> --domain <name>');
   console.log('  $ pinme rm <hash>');
   console.log('  $ pinme set-appkey <AppKey>');
   console.log('  $ pinme my-domains');

@@ -16,7 +16,7 @@
 [PinMe](https://pinme.eth.limo/) is a zero-config frontend deployment tool.
 No servers. No accounts. No setup.
 
-Build a static site, generate a page with AI, or export your frontend — then deploy instantly with a single command.
+Build a static site, generate a page with AI, export your frontend, or import CAR files — then deploy instantly with a single command.
 
 PinMe publishes your site as verifiable content, making silent tampering and accidental breakage far harder than traditional hosting.
 
@@ -54,6 +54,20 @@ pinme upload /path/to/file-or-directory
 # Upload and bind to a domain
 pinme upload /path/to/file-or-directory --domain <name>
 pinme upload /path/to/file-or-directory -d <name>
+```
+
+### Import CAR files
+
+```bash
+# Interactive CAR import
+pinme import
+
+# Specify CAR file path directly
+pinme import /path/to/car-file.car
+
+# Import CAR file and bind to a domain
+pinme import /path/to/car-file.car --domain <name>
+pinme import /path/to/car-file.car -d <name>
 ```
 
 ### Remove files from IPFS
@@ -138,6 +152,37 @@ pinme upload ./my-website
 pinme upload ./my-website --domain my-site
 pinme upload ./my-website -d my-site
 ```
+
+### `import`
+
+Import CAR (Content Addressable aRchive) files to the IPFS network. This command is specifically designed for importing CAR files while maintaining their original structure. Supports binding to a Pinme subdomain after import.
+
+```bash
+pinme import [path] [--domain <name>]
+```
+
+**Options:**
+- `path`: Path to the CAR file to import (optional, if not provided, interactive mode will be entered)
+- `-d, --domain <name>`: Pinme subdomain to bind after import (optional)
+
+**Examples:**
+```bash
+# Interactive CAR import
+pinme import
+
+# Import a specific CAR file
+pinme import ./my-archive.car
+
+# Import CAR file and bind to a domain
+pinme import ./my-archive.car --domain my-archive
+pinme import ./my-archive.car -d my-archive
+```
+
+**Key Differences from `upload`:**
+- CAR files are imported with their original structure preserved
+- Uses IPFS CAR import protocol for efficient content addressing
+- Ideal for importing previously exported IPFS content
+- Same domain binding and management features as `upload`
 
 ### `rm`
 
@@ -287,6 +332,15 @@ export default {
   // other configurations...
 }
 ```
+
+### Working with CAR Files
+
+When using the `import` command for CAR files:
+
+1. **CAR File Format**: Ensure your files have the `.car` extension and follow the IPFS CAR specification
+2. **Content Integrity**: CAR files preserve the original content structure and CID relationships
+3. **Use Cases**: Ideal for importing previously exported IPFS content, migrating between IPFS nodes, or batch content transfers
+4. **Size Considerations**: CAR files can be large, ensure you have sufficient bandwidth and storage space
 
 ## GitHub Actions Integration
 
