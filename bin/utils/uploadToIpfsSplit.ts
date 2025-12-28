@@ -10,18 +10,20 @@ import {
   formatSize,
 } from './uploadLimits';
 import { saveUploadHistory } from './history';
-import { getDeviceId } from './getDeviceId';
+import { getUid } from './getDeviceId';
 
 // Configuration constants
-const IPFS_API_URL = process.env.IPFS_API_URL || 'https://ipfs.glitterprotocol.dev/api/v2';
+const IPFS_API_URL =
+  process.env.IPFS_API_URL || 'https://ipfs.glitterprotocol.dev/api/v2';
 const MAX_RETRIES = parseInt(process.env.MAX_RETRIES || '2');
 const RETRY_DELAY = parseInt(process.env.RETRY_DELAY_MS || '1000');
 const TIMEOUT = parseInt(process.env.TIMEOUT_MS || '600000');
-const MAX_POLL_TIME = parseInt(process.env.MAX_POLL_TIME_MINUTES || '5') * 60 * 1000;
+const MAX_POLL_TIME =
+  parseInt(process.env.MAX_POLL_TIME_MINUTES || '5') * 60 * 1000;
 const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_SECONDS || '2') * 1000;
 const PROGRESS_UPDATE_INTERVAL = 200; // ms
 const EXPECTED_UPLOAD_TIME = 60000; // 60 seconds
-const MAX_PROGRESS = 0.90; // 90%
+const MAX_PROGRESS = 0.9; // 90%
 
 // Type definitions
 interface ChunkSessionResponse {
@@ -87,7 +89,7 @@ class StepProgressBar {
     this.spinner = ora(`Preparing to upload ${fileName}...`).start();
     this.startTime = Date.now();
     this.stepStartTime = Date.now();
-    
+
     this.startProgress();
   }
 
@@ -124,7 +126,9 @@ class StepProgressBar {
     this.stopProgress();
     const totalTime = Math.floor((Date.now() - this.startTime) / 1000);
     const progressBar = this.createProgressBar(1);
-    this.spinner.succeed(`Upload completed ${progressBar} 100% (${totalTime}s)`);
+    this.spinner.succeed(
+      `Upload completed ${progressBar} 100% (${totalTime}s)`,
+    );
   }
 
   fail(error: string): void {
@@ -137,19 +141,21 @@ class StepProgressBar {
     this.progressInterval = setInterval(() => {
       const elapsed = Date.now() - this.startTime;
       let progress: number;
-      
+
       if (this.isSimulatingProgress) {
         // Simulate progress after 90%, gradually grow from 90% to 99%
         const simulationElapsed = Date.now() - this.simulationStartTime;
         const simulationProgress = Math.min(simulationElapsed / 60000, 1); // From 90% to 99% within 60 seconds
-        progress = 0.90 + (simulationProgress * 0.09); // 90% + 9% = 99%
+        progress = 0.9 + simulationProgress * 0.09; // 90% + 9% = 99%
       } else {
         progress = this.calculateProgress(elapsed);
       }
-      
+
       const duration = this.formatDuration(Math.floor(elapsed / 1000));
       const progressBar = this.createProgressBar(progress);
-      this.spinner.text = `Uploading ${this.fileName}... ${progressBar} ${Math.round(progress * 100)}% (${duration})`;
+      this.spinner.text = `Uploading ${
+        this.fileName
+      }... ${progressBar} ${Math.round(progress * 100)}% (${duration})`;
     }, PROGRESS_UPDATE_INTERVAL);
   }
 
@@ -161,7 +167,10 @@ class StepProgressBar {
   }
 
   private calculateProgress(elapsed: number): number {
-    return Math.min((elapsed / EXPECTED_UPLOAD_TIME) * MAX_PROGRESS, MAX_PROGRESS);
+    return Math.min(
+      (elapsed / EXPECTED_UPLOAD_TIME) * MAX_PROGRESS,
+      MAX_PROGRESS,
+    );
   }
 
   private createProgressBar(progress: number, width: number = 20): string {
@@ -330,14 +339,19 @@ async function uploadChunkWithAbort(
         retryCount + 1,
       );
     }
-    
+
     throw new Error(
-      `Chunk ${chunkIndex + 1} upload failed after ${MAX_RETRIES} retries: ${error.message}`,
+      `Chunk ${chunkIndex + 1} upload failed after ${MAX_RETRIES} retries: ${
+        error.message
+      }`,
     );
   }
 }
 
-async function delayWithAbortCheck(delay: number, signal: AbortSignal): Promise<void> {
+async function delayWithAbortCheck(
+  delay: number,
+  signal: AbortSignal,
+): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const timeoutId = setTimeout(() => {
       if (signal.aborted) {
@@ -391,7 +405,7 @@ async function uploadFileChunks(
           chunkIndex,
           chunkData,
           deviceId,
-          abortController.signal
+          abortController.signal,
         );
 
         if (abortController.signal.aborted) return;
@@ -404,7 +418,9 @@ async function uploadFileChunks(
         }
 
         hasFatalError = true;
-        fatalError = `Chunk ${chunkIndex + 1}/${totalChunks} upload failed: ${error.message}`;
+        fatalError = `Chunk ${chunkIndex + 1}/${totalChunks} upload failed: ${
+          error.message
+        }`;
         abortController.abort();
         throw new Error(fatalError);
       }
@@ -412,12 +428,16 @@ async function uploadFileChunks(
   });
 
   try {
-    const results = await Promise.allSettled(uploadTasks.map(task => task()));
-    const failedResults = results.filter(result => result.status === 'rejected');
+    const results = await Promise.allSettled(uploadTasks.map((task) => task()));
+    const failedResults = results.filter(
+      (result) => result.status === 'rejected',
+    );
 
     if (failedResults.length > 0) {
       const firstFailure = failedResults[0] as PromiseRejectedResult;
-      throw new Error(firstFailure.reason.message || 'Error occurred during upload');
+      throw new Error(
+        firstFailure.reason.message || 'Error occurred during upload',
+      );
     }
 
     if (hasFatalError) {
@@ -523,7 +543,7 @@ async function monitorChunkProgress(
         }
       }
 
-      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
     }
 
     const maxPollTimeMinutes = Math.floor(MAX_POLL_TIME / (60 * 1000));
@@ -545,7 +565,9 @@ async function uploadDirectoryInChunks(
   const sizeCheck = checkDirectorySizeLimit(directoryPath);
   if (sizeCheck.exceeds) {
     throw new Error(
-      `Directory ${directoryPath} exceeds size limit ${formatSize(sizeCheck.limit)} (size: ${formatSize(sizeCheck.size)})`,
+      `Directory ${directoryPath} exceeds size limit ${formatSize(
+        sizeCheck.limit,
+      )} (size: ${formatSize(sizeCheck.size)})`,
     );
   }
 
@@ -618,7 +640,9 @@ async function uploadFileInChunks(
   const sizeCheck = checkFileSizeLimit(filePath);
   if (sizeCheck.exceeds) {
     throw new Error(
-      `File ${filePath} exceeds size limit ${formatSize(sizeCheck.limit)} (size: ${formatSize(sizeCheck.size)})`,
+      `File ${filePath} exceeds size limit ${formatSize(
+        sizeCheck.limit,
+      )} (size: ${formatSize(sizeCheck.size)})`,
     );
   }
 
@@ -680,7 +704,7 @@ export default async function (filePath: string, importAsCar: boolean = false): 
   previewHash?: string | null;
   shortUrl?: string;
 } | null> {
-  const deviceId = getDeviceId();
+  const deviceId = getUid();
   if (!deviceId) {
     throw new Error('Device ID not found');
   }
