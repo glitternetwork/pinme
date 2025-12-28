@@ -22,6 +22,10 @@ function showGeneralHelp(): void {
   console.log("  upload              Upload a file or directory to IPFS");
   console.log("  list                Show upload history");
   console.log("  ls                  Alias for 'list' command");
+  console.log("  set-appkey          Set AppKey for authentication");
+  console.log("  show-appkey         Show current AppKey information (masked)");
+  console.log("  appkey              Alias for 'show-appkey' command");
+  console.log("  logout              Log out and clear authentication");
   console.log("  help [command]      Show help for a specific command\n");
   
   console.log("OPTIONS:");
@@ -89,6 +93,41 @@ function showLsHelp(): void {
   console.log("  pinme ls -c");
 }
 
+// show-appkey command help
+function showShowAppKeyHelp(): void {
+  console.log("COMMAND:");
+  console.log("  show-appkey - Show current AppKey information (masked)\n");
+  
+  console.log("USAGE:");
+  console.log("  pinme show-appkey");
+  console.log("  pinme appkey\n");
+  
+  console.log("DESCRIPTION:");
+  console.log("  This command displays the current AppKey information.");
+  console.log("  Sensitive information (token and AppKey) will be masked for security.\n");
+  
+  console.log("EXAMPLES:");
+  console.log("  pinme show-appkey");
+  console.log("  pinme appkey");
+}
+
+// logout command help
+function showLogoutHelp(): void {
+  console.log("COMMAND:");
+  console.log("  logout - Log out and clear authentication\n");
+  
+  console.log("USAGE:");
+  console.log("  pinme logout\n");
+  
+  console.log("DESCRIPTION:");
+  console.log("  This command logs out the current user and clears the authentication");
+  console.log("  information from local storage. You will need to set AppKey again");
+  console.log("  to use authenticated features.\n");
+  
+  console.log("EXAMPLES:");
+  console.log("  pinme logout");
+}
+
 // show the help for the command
 function showHelp(command?: string): void {
   if (!command) {
@@ -105,6 +144,13 @@ function showHelp(command?: string): void {
       break;
     case 'ls':
       showLsHelp();
+      break;
+    case 'show-appkey':
+    case 'appkey':
+      showShowAppKeyHelp();
+      break;
+    case 'logout':
+      showLogoutHelp();
       break;
     default:
       console.log(`Unknown command: ${command}`);

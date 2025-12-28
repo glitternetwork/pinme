@@ -38,6 +38,16 @@ export function setAuthToken(combined: string): AuthConfig {
   return auth;
 }
 
+export function clearAuthToken(): void {
+  try {
+    if (fs.existsSync(AUTH_FILE)) {
+      fs.removeSync(AUTH_FILE);
+    }
+  } catch (error) {
+    console.error(`Failed to clear auth token: ${error}`);
+  }
+}
+
 export function getAuthConfig(): AuthConfig | null {
   try {
     if (!fs.existsSync(AUTH_FILE)) return null;
@@ -59,5 +69,3 @@ export function getAuthHeaders(): Record<string, string> {
     'authentication-tokens': conf.token,
   };
 }
-
-
