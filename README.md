@@ -25,7 +25,6 @@ PinMe handles availability and persistence for you.
 
 Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 
-
 ## Installation
 
 ### Using npm
@@ -106,6 +105,23 @@ pinme set-appkey
 pinme set-appkey <AppKey>
 ```
 
+### View AppKey information
+
+```bash
+# Show current AppKey (masked for security)
+pinme show-appkey
+
+# Or use the shorthand command
+pinme appkey
+```
+
+### Log out
+
+```bash
+# Log out and clear authentication
+pinme logout
+```
+
 ### View your domains
 
 ```bash
@@ -134,10 +150,12 @@ pinme upload [path] [--domain <name>]
 ```
 
 **Options:**
+
 - `path`: Path to the file or directory to upload (optional, if not provided, interactive mode will be entered)
 - `-d, --domain <name>`: Pinme subdomain to bind after upload (optional)
 
 **Examples:**
+
 ```bash
 # Interactive upload
 pinme upload
@@ -193,9 +211,11 @@ pinme rm [hash]
 ```
 
 **Options:**
+
 - `hash`: IPFS content hash to remove (optional, if not provided, interactive mode will be entered)
 
 **Examples:**
+
 ```bash
 # Interactive removal
 pinme rm
@@ -216,10 +236,12 @@ pinme ls [options]
 ```
 
 **Options:**
+
 - `-l, --limit <number>`: Limit the number of records displayed
 - `-c, --clear`: Clear all upload history
 
 **Examples:**
+
 ```bash
 # Show the last 10 records
 pinme list
@@ -240,9 +262,11 @@ pinme set-appkey [AppKey]
 ```
 
 **Options:**
+
 - `AppKey`: Your AppKey for authentication (optional, if not provided, interactive mode will be entered)
 
 **Examples:**
+
 ```bash
 # Interactive AppKey setup
 pinme set-appkey
@@ -252,6 +276,55 @@ pinme set-appkey your-app-key-here
 ```
 
 **Note:** After setting the AppKey, your anonymous upload history will be automatically merged to your account.
+
+### `show-appkey` / `appkey`
+
+Display current AppKey information with masked sensitive data.
+
+```bash
+pinme show-appkey
+pinme appkey
+```
+
+**Description:**
+
+This command shows the current AppKey information including:
+- Address (fully displayed)
+- Token (masked for security)
+- AppKey (masked for security)
+
+**Examples:**
+
+```bash
+# Show AppKey information
+pinme show-appkey
+
+# Shorthand command
+pinme appkey
+```
+
+**Note:** Sensitive information (token and AppKey) will be masked to protect your credentials. Only the address is fully displayed.
+
+### `logout`
+
+Log out and clear authentication information from local storage.
+
+```bash
+pinme logout
+```
+
+**Description:**
+
+This command logs out the current user and removes the authentication information from local storage. After logging out, you will need to set your AppKey again to use authenticated features.
+
+**Examples:**
+
+```bash
+# Log out
+pinme logout
+```
+
+**Note:** This action will remove your AppKey from local storage. You can set it again using `pinme set-appkey` command.
 
 ### `my-domains` / `domain`
 
@@ -263,6 +336,7 @@ pinme domain
 ```
 
 **Examples:**
+
 ```bash
 # List all domains
 pinme my-domains
@@ -272,6 +346,7 @@ pinme domain
 ```
 
 This command displays information about each domain including:
+
 - Domain name
 - Domain type
 - Bind time
@@ -286,9 +361,11 @@ pinme help [command]
 ```
 
 **Options:**
+
 - `command`: The specific command to view help for (optional)
 
 **Examples:**
+
 ```bash
 # Display general help
 pinme help
@@ -309,9 +386,9 @@ Uploaded files are stored on the IPFS network and accessible through the Glitter
 ### Log Locations
 
 Logs and configuration files are stored in:
+
 - Linux/macOS: `~/.pinme/`
 - Windows: `%USERPROFILE%\.pinme\`
-
 
 ## License
 
@@ -328,9 +405,9 @@ When uploading projects built with Vite, please note:
 ```js
 // vite.config.js
 export default {
-  base: "./",
+  base: './',
   // other configurations...
-}
+};
 ```
 
 ### Working with CAR Files
@@ -349,10 +426,12 @@ PinMe can be integrated with GitHub Actions to automatically deploy your project
 ### Quick Setup
 
 1. **Add the workflow file** to your repository:
+
    - Copy `.github/workflows/deploy.yml` from the PinMe repository to your project
    - Or create `.github/workflows/deploy.yml` in your repository
 
 2. **Configure GitHub Secrets**:
+
    - Go to your repository → Settings → Secrets and variables → Actions
    - Add a new secret named `PINME_APPKEY` with your PinMe AppKey
    - (Optional) Add `PINME_DOMAIN` to specify a custom domain name
@@ -380,6 +459,7 @@ The GitHub Actions workflow automatically:
 You can configure the following secrets in your repository:
 
 - **`PINME_APPKEY`** (Required): Your PinMe AppKey for authentication
+
   - Format: `<address>-<jwt>`
   - Get your AppKey from [PinMe website](https://pinme.eth.limo/)
 
@@ -444,17 +524,24 @@ The workflow automatically detects and supports:
 ### Troubleshooting
 
 **Build directory not found:**
+
 - Ensure your build script outputs to a standard directory (`dist`, `build`, `public`, or `out`)
 - Or set `PINME_DOMAIN` secret and use manual workflow dispatch to specify custom directory
 
 **Authentication failed:**
+
 - Verify your `PINME_APPKEY` secret is correctly set
 - Ensure the AppKey format is correct: `<address>-<jwt>`
 
 **Domain binding failed:**
+
 - Check if the domain name is available
 - Ensure you have permission to bind the domain
 - Try a different domain name
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=glitternetwork/pinme&type=Date)](https://star-history.com/#glitternetwork/pinme&Date)
 
 ## Contact Us
 

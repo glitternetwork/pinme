@@ -10,7 +10,7 @@ import {
   formatSize,
 } from './uploadLimits';
 import { saveUploadHistory } from './history';
-import { getDeviceId } from './getDeviceId';
+import { getUid } from './getDeviceId';
 
 const ipfsApiUrl =
   process.env.IPFS_API_URL || 'https://ipfs.glitterprotocol.dev/api/v2';
@@ -189,8 +189,9 @@ function handleMultipartError(error: any, context: string): string {
 // error code
 const ERROR_CODES = {
   '30001': `File too large, single file max size: ${process.env.FILE_SIZE_LIMIT}MB,single folder max size: ${process.env.DIRECTORY_SIZE_LIMIT}MB`,
-  '30002': `Max storage quorum ${Number(process.env.STORAGE_SIZE_LIMIT) / 1000
-    } GB reached`,
+  '30002': `Max storage quorum ${
+    Number(process.env.STORAGE_SIZE_LIMIT) / 1000
+  } GB reached`,
 };
 
 function loadFilesToArrRecursively(
@@ -892,7 +893,7 @@ export default async function (filePath: string): Promise<{
   shortUrl?: string;
 } | null> {
   // check if the file is a directory
-  const deviceId = getDeviceId();
+  const deviceId = getUid();
   if (!deviceId) {
     throw new Error('Device ID not found');
   }

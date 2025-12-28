@@ -6,8 +6,7 @@ import upload from './utils/uploadToIpfsSplit';
 import fs from 'fs';
 import CryptoJS from 'crypto-js';
 import { checkDomainAvailable, bindPinmeDomain } from './utils/pinmeApi';
-import { getAuthConfig } from './utils/auth';
-import { getDeviceId } from './utils/getDeviceId';
+import { getUid } from './utils/getDeviceId';
 
 // get from environment variables
 const URL = process.env.IPFS_PREVIEW_URL;
@@ -17,7 +16,11 @@ import { checkNodeVersion } from './utils/checkNodeVersion';
 checkNodeVersion();
 
 // encrypt the hash with optional uid (device id)
-function encryptHash(contentHash: string, key: string | undefined, uid?: string): string {
+function encryptHash(
+  contentHash: string,
+  key: string | undefined,
+  uid?: string,
+): string {
   try {
     if (!key) {
       throw new Error('Secret key not found');
@@ -66,15 +69,6 @@ function getDomainFromArgs(): string | null {
   return null;
 }
 
-// Get uid: use address from auth if logged in, otherwise use deviceId
-function getUid(): string {
-  const auth = getAuthConfig();
-  if (auth?.address) {
-    return auth.address;
-  }
-  return getDeviceId();
-}
-
 export default async (options?: UploadOptions): Promise<void> => {
   try {
     console.log(
@@ -103,7 +97,11 @@ export default async (options?: UploadOptions): Promise<void> => {
       if (domainArg) {
         const check = await checkDomainAvailable(domainArg);
         if (!check.is_valid) {
-          console.log(chalk.red(`Domain not available: ${check.error || 'unknown reason'}`));
+          console.log(
+            chalk.red(
+              `Domain not available: ${check.error || 'unknown reason'}`,
+            ),
+          );
           return;
         }
         console.log(chalk.green(`Domain available: ${domainArg}`));
@@ -124,11 +122,19 @@ export default async (options?: UploadOptions): Promise<void> => {
           console.log(chalk.cyan(`${URL}${encryptedCID}`));
           // optional: bind domain after upload
           if (domainArg) {
-            console.log(chalk.blue(`Binding domain: ${domainArg} with CID: ${result.contentHash}`));
+            console.log(
+              chalk.blue(
+                `Binding domain: ${domainArg} with CID: ${result.contentHash}`,
+              ),
+            );
             const ok = await bindPinmeDomain(domainArg, result.contentHash);
             if (ok) {
               console.log(chalk.green(`Bind success: ${domainArg}`));
-              console.log(chalk.white(`Visit (Pinme subdomain example): https://${domainArg}.pinit.eth.limo`));
+              console.log(
+                chalk.white(
+                  `Visit (Pinme subdomain example): https://${domainArg}.pinit.eth.limo`,
+                ),
+              );
             } else {
               console.log(chalk.red('Binding failed. Please try again later.'));
             }
@@ -161,7 +167,11 @@ export default async (options?: UploadOptions): Promise<void> => {
       if (domainArg) {
         const check = await checkDomainAvailable(domainArg);
         if (!check.is_valid) {
-          console.log(chalk.red(`Domain not available: ${check.error || 'unknown reason'}`));
+          console.log(
+            chalk.red(
+              `Domain not available: ${check.error || 'unknown reason'}`,
+            ),
+          );
           return;
         }
         console.log(chalk.green(`Domain available: ${domainArg}`));
@@ -182,11 +192,19 @@ export default async (options?: UploadOptions): Promise<void> => {
           console.log(chalk.cyan(`URL:`));
           console.log(chalk.cyan(`${URL}${encryptedCID}`));
           if (domainArg) {
-            console.log(chalk.blue(`Binding domain: ${domainArg} with CID: ${result.contentHash}`));
+            console.log(
+              chalk.blue(
+                `Binding domain: ${domainArg} with CID: ${result.contentHash}`,
+              ),
+            );
             const ok = await bindPinmeDomain(domainArg, result.contentHash);
             if (ok) {
               console.log(chalk.green(`Bind success: ${domainArg}`));
-              console.log(chalk.white(`Visit (Pinme subdomain example): https://${domainArg}.pinit.eth.limo`));
+              console.log(
+                chalk.white(
+                  `Visit (Pinme subdomain example): https://${domainArg}.pinit.eth.limo`,
+                ),
+              );
             } else {
               console.log(chalk.red('Binding failed. Please try again later.'));
             }
