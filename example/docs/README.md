@@ -58,8 +58,7 @@ pinme upload ./
 
 After successful deployment, PinMe will output the CID and access links. You can access the documentation via:
 
-- IPFS Gateway: `https://ipfs.glitterprotocol.dev/ipfs/<your-CID>`
-- PinMe Gateway: `https://pinme.dev/ipfs/<your-CID>`
+- IPFS Gateway: `https://ipfs.io/ipfs/<your-CID>`
 
 ## Updating Documentation
 

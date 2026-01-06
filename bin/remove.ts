@@ -89,7 +89,6 @@ export default async (options?: RemoveOptions): Promise<void> => {
         console.log(chalk.red(`Invalid input format: ${argHash}`));
         console.log(chalk.yellow('Supported formats:'));
         console.log(chalk.yellow('  - IPFS hash: bafybeig...'));
-        console.log(chalk.yellow('  - Full URL: https://bafybeig....pinme.dev'));
         console.log(chalk.yellow('  - Subname: 3abt6ztu'));
         console.log(chalk.yellow('  - Subname URL: https://3abt6ztu.pinit.eth.limo'));
         return;
@@ -140,7 +139,7 @@ export default async (options?: RemoveOptions): Promise<void> => {
           }
           const parsedInput = parseInput(input.trim());
           if (!parsedInput) {
-            return 'Invalid format. Supported: IPFS hash, full URL (*.pinme.dev), subname, or subname URL (*.pinit.eth.limo)';
+            return 'Invalid format. Supported: IPFS hash, full URL (*), subname, or subname URL (*.pinit.eth.limo)';
           }
           return true;
         },
