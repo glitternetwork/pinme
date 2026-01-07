@@ -25,7 +25,163 @@ PinMe handles availability and persistence for you.
 
 Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 
-## Installation
+---
+
+## 📋 Table of Contents
+
+- [Quick Start](#quick-start)
+- [For AI Assistants](#for-ai-assistants)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Common Static File Directories](#common-static-file-directories)
+- [Error Handling](#error-handling)
+- [Upload Limits](#upload-limits)
+- [GitHub Actions Integration](#github-actions-integration)
+- [Contact Us](#contact-us)
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- **Node.js 16.13.0 or higher** required
+
+```bash
+# Check your Node.js version
+node --version
+```
+
+### Three Steps to Deploy
+
+1. **Install PinMe**
+```bash
+npm install -g pinme
+```
+
+2. **Build your project** (if not already built)
+```bash
+# For Vite/React/Vue projects
+npm run build
+
+# For Next.js (static export)
+npm run build
+```
+
+3. **Upload to PinMe**
+```bash
+# Upload the dist directory (most common)
+pinme upload dist
+
+# Or upload build directory
+pinme upload build
+```
+
+That's it! You'll get a preview URL like `https://pinme.eth.limo/#/preview/*`
+
+---
+
+## 🤖 For AI Assistants
+
+This section provides AI-specific instructions for deploying websites using PinMe CLI.
+
+### AI Execution Protocol
+
+**Goal:** Use PinMe CLI to upload static files to server.
+
+#### Required Steps
+
+1. **Check Environment Requirements**
+   ```bash
+   # Check Node.js version (requires 16.13.0+)
+   node --version
+   ```
+
+2. **Install PinMe CLI** (if not installed)
+   ```bash
+   npm install -g pinme
+   ```
+
+3. **Identify the Static File Directory**
+   Priority order to check:
+   - `dist/` - Default output directory for Vue/React/Vite projects
+   - `build/` - Output directory for Create React App
+   - `out/` - Output directory for Next.js static export
+   - `public/` - Pure static file projects
+
+   **Validation Rules:**
+   - Folder must exist
+   - Must contain `index.html` file (for website deployment)
+   - Must contain actual static resource files (CSS, JS, images, etc.)
+
+   If no suitable folder is found, ask the user to specify the upload path.
+
+4. **Execute Deployment Command**
+   ```bash
+   pinme upload <folder_path>
+   ```
+
+5. **Return Result**
+   - Only return final preview page URL: `https://pinme.eth.limo/#/preview/*`
+   - Do not output additional logs or intermediate steps
+
+#### Prohibited Operations
+
+- ❌ Do not upload `node_modules`, `.env`, `.git` directories
+- ❌ Do not upload source code directories (like `src/`)
+- ❌ Do not upload config files (like package.json, tsconfig.json, etc.)
+- ❌ Do not attempt to upload non-existent or empty folders
+
+### Machine-Readable Configuration
+
+For easy AI tool parsing:
+
+```json
+{
+  "tool": "pinme",
+  "requirements": {
+    "node_version": ">=16.13.0"
+  },
+  "install": "npm install -g pinme",
+  "upload": "pinme upload {{directory}}",
+  "upload_with_domain": "pinme upload {{directory}} --domain {{domain}}",
+  "validDirectories": ["dist", "build", "out", "public"],
+  "requiredFiles": ["index.html"],
+  "excludePatterns": ["node_modules", ".env", ".git", "src"],
+  "limits": {
+    "single_file": "200MB",
+    "total_directory": "1GB"
+  },
+  "output": "preview_url",
+  "preview_url_format": "https://pinme.eth.limo/#/preview/*",
+  "fixed_domain_format": "https://*.pinit.eth.limo",
+  "other_commands": {
+    "version": "pinme --version",
+    "list": "pinme list",
+    "set_appkey": "pinme set-appkey",
+    "show_appkey": "pinme show-appkey",
+    "my_domains": "pinme my-domains",
+    "remove": "pinme rm <hash>",
+    "logout": "pinme logout",
+    "help": "pinme help"
+  }
+}
+```
+
+### AI Usage Template
+
+> **Deployment Request:**
+> Please read the PinMe documentation, then use PinMe CLI to deploy the specified website (upload static files) to server.
+>
+> **Operation Steps:**
+> 1. Check Node.js version (requires 16.13.0+)
+> 2. Check if pinme is installed, install if not
+> 3. Identify the static file directory for the website to deploy
+> 4. Execute deployment command
+> 5. Return preview page link: `https://pinme.eth.limo/#/preview/*`
+
+---
+
+## 📦 Installation
 
 ### Using npm
 
@@ -39,9 +195,18 @@ npm install -g pinme
 yarn global add pinme
 ```
 
-## Usage
+### Verify Installation
 
-### Upload files or directories
+```bash
+# Check PinMe version
+pinme --version
+```
+
+---
+
+## 💡 Usage
+
+### Upload Files or Directories
 
 ```bash
 # Interactive upload
@@ -55,17 +220,7 @@ pinme upload /path/to/file-or-directory --domain <name>
 pinme upload /path/to/file-or-directory -d <name>
 ```
 
-### Remove files from IPFS
-
-```bash
-# Interactive removal
-pinme rm
-
-# Remove a specific file by hash
-pinme rm <IPFS_hash>
-```
-
-### View upload history
+### View Upload History
 
 ```bash
 # Show the last 10 upload records
@@ -81,80 +236,97 @@ pinme list -l 5
 pinme list -c
 ```
 
-### Set AppKey for authentication
+### Remove Files from IPFS
 
 ```bash
-# Interactive AppKey setup
+# Interactive removal
+pinme rm
+
+# Remove a specific file by hash
+pinme rm <IPFS_hash>
+```
+
+### Authentication (AppKey)
+
+```bash
+# Set AppKey for login and domain binding
 pinme set-appkey
 
-# Set AppKey directly
-pinme set-appkey <AppKey>
-```
-
-### View AppKey information
-
-```bash
-# Show current AppKey (masked for security)
+# View current AppKey info (masked)
 pinme show-appkey
-
-# Or use the shorthand command
 pinme appkey
-```
 
-### Log out
-
-```bash
-# Log out and clear authentication
+# Log out
 pinme logout
-```
 
-### View your domains
-
-```bash
-# List all domains owned by current account
+# View your domains
 pinme my-domains
-
-# Or use the shorthand command
 pinme domain
 ```
 
-### Get help
+### Get Help
 
 ```bash
 # Display help information
 pinme help
 ```
 
-## Command Details
+---
+
+## 📁 Common Static File Directories
+
+### Automatic Detection
+
+PinMe automatically detects these common output directories (in priority order):
+
+| Directory | Framework/Tool | Description |
+|-----------|---------------|-------------|
+| `dist/` | Vite, Vue CLI, Angular | Default output directory |
+| `build/` | Create React App | CRA output directory |
+| `out/` | Next.js | Static export output |
+| `public/` | Static sites | Pure static file projects |
+
+### Validation Rules
+
+The selected directory must meet:
+- ✅ Folder exists
+- ✅ Contains `index.html` file (for website deployment)
+- ✅ Contains actual static resource files (CSS, JS, images, etc.)
+
+### What NOT to Upload
+
+- ❌ `node_modules/` - Dependency folder
+- ❌ `.git/` - Version control
+- ❌ `.env` - Environment configuration
+- ❌ `src/` - Source code directory
+- ❌ `package.json`, `tsconfig.json` - Config files
+
+---
+
+## 🛠️ Command Details
 
 ### `upload`
 
-Upload a file or directory to the IPFS network. Supports binding to a Pinme subdomain after upload.
+Upload a file or directory to the IPFS network.
 
 ```bash
 pinme upload [path] [--domain <name>]
 ```
 
 **Options:**
-
-- `path`: Path to the file or directory to upload (optional, if not provided, interactive mode will be entered)
+- `path`: Path to the file or directory to upload (optional, interactive if not provided)
 - `-d, --domain <name>`: Pinme subdomain to bind after upload (optional)
 
 **Examples:**
-
 ```bash
-# Interactive upload
-pinme upload
+# Upload dist directory
+pinme upload dist
+
+# Upload and bind to a domain (requires Plus membership)
+pinme upload dist --domain my-site
 
 # Upload a specific file
 pinme upload ./example.jpg
-
-# Upload an entire directory
-pinme upload ./my-website
-
-# Upload and bind to a domain
-pinme upload ./my-website --domain my-site
-pinme upload ./my-website -d my-site
 ```
 
 ### `rm`
@@ -165,21 +337,7 @@ Remove a file from the IPFS network.
 pinme rm [hash]
 ```
 
-**Options:**
-
-- `hash`: IPFS content hash to remove (optional, if not provided, interactive mode will be entered)
-
-**Examples:**
-
-```bash
-# Interactive removal
-pinme rm
-
-# Remove a specific file by hash
-pinme rm bafybeifdwyoz66u5czbbjvmmais5fzrzrolxbyiydqsbrxessndt3s6zdi
-```
-
-**Note:** This action unpins the content from our IPFS node and deletes the ENS subdomain record. It does not ensure that the file is removed from the IPFS network.
+**Note:** This unpins content from our IPFS node and deletes the ENS subdomain record. It does not guarantee removal from the entire IPFS network.
 
 ### `list` / `ls`
 
@@ -187,26 +345,11 @@ Display upload history.
 
 ```bash
 pinme list [options]
-pinme ls [options]
 ```
 
 **Options:**
-
 - `-l, --limit <number>`: Limit the number of records displayed
 - `-c, --clear`: Clear all upload history
-
-**Examples:**
-
-```bash
-# Show the last 10 records
-pinme list
-
-# Show the last 5 records
-pinme ls -l 5
-
-# Clear all history records
-pinme list -c
-```
 
 ### `set-appkey`
 
@@ -216,146 +359,108 @@ Set AppKey for authentication and automatically merge anonymous upload history t
 pinme set-appkey [AppKey]
 ```
 
-**Options:**
-
-- `AppKey`: Your AppKey for authentication (optional, if not provided, interactive mode will be entered)
-
-**Examples:**
-
-```bash
-# Interactive AppKey setup
-pinme set-appkey
-
-# Set AppKey directly
-pinme set-appkey your-app-key-here
-```
-
-**Note:** After setting the AppKey, your anonymous upload history will be automatically merged to your account.
+**Note:** Fixed domain binding requires AppKey and Plus membership. Get your AppKey from [PinMe website](https://pinme.eth.limo/).
 
 ### `show-appkey` / `appkey`
 
 Display current AppKey information with masked sensitive data.
 
-```bash
-pinme show-appkey
-pinme appkey
-```
-
-**Description:**
-
-This command shows the current AppKey information including:
-- Address (fully displayed)
-- Token (masked for security)
-- AppKey (masked for security)
-
-**Examples:**
-
-```bash
-# Show AppKey information
-pinme show-appkey
-
-# Shorthand command
-pinme appkey
-```
-
-**Note:** Sensitive information (token and AppKey) will be masked to protect your credentials. Only the address is fully displayed.
-
 ### `logout`
 
 Log out and clear authentication information from local storage.
-
-```bash
-pinme logout
-```
-
-**Description:**
-
-This command logs out the current user and removes the authentication information from local storage. After logging out, you will need to set your AppKey again to use authenticated features.
-
-**Examples:**
-
-```bash
-# Log out
-pinme logout
-```
-
-**Note:** This action will remove your AppKey from local storage. You can set it again using `pinme set-appkey` command.
 
 ### `my-domains` / `domain`
 
 List all domains owned by the current account.
 
-```bash
-pinme my-domains
-pinme domain
+---
+
+## ⚠️ Error Handling
+
+### Common Errors and Solutions
+
+#### 1. Node.js Version Too Low
 ```
-
-**Examples:**
-
-```bash
-# List all domains
-pinme my-domains
-
-# Shorthand command
-pinme domain
+Error: Node.js version not supported
 ```
+**Solution:** Upgrade to Node.js 16.13.0 or higher
 
-This command displays information about each domain including:
-
-- Domain name
-- Domain type
-- Bind time
-- Expire time
-
-### `help`
-
-Display help information.
-
-```bash
-pinme help [command]
+#### 2. Command Not Found
 ```
-
-**Options:**
-
-- `command`: The specific command to view help for (optional)
-
-**Examples:**
-
-```bash
-# Display general help
-pinme help
+Error: command not found: pinme
 ```
+**Solution:** Run `npm install -g pinme`
 
-## Upload Limits
+#### 3. Folder Does Not Exist
+```
+Error: No such file or directory
+```
+**Solution:** Check if path is correct, or use `ls` command to view available directories
 
-- Single file size limit: 200MB (free plan)
-- Total directory size limit: 1GB (free plan)
+#### 4. Permission Error
+```
+Error: Permission denied
+```
+**Solution:** Check folder permissions, or use sudo (only when necessary)
 
-## File Storage
+#### 5. Upload Failed
+- Check network connection
+- Confirm file size is within limits (single file 200MB, total directory 1GB)
+- Retry upload command
 
-Uploaded files are stored on the IPFS network and accessible through the Glitter Protocol's IPFS gateway. After a successful upload, you will receive:
+#### 6. Authentication Failed
+- Check if AppKey is set correctly
+- Confirm AppKey format: `<address>-<jwt>`
+- Use `pinme show-appkey` to check current status
 
+---
+
+## 📊 Upload Limits
+
+| Type | Free Plan |
+|------|-----------|
+| Single file | 200MB |
+| Total directory | 1GB |
+
+### File Storage
+
+Uploaded files are stored on the IPFS network and accessible through the Glitter Protocol's IPFS gateway.
+
+**After successful upload, you receive:**
 1. IPFS content hash
-2. Accessible URL link
+2. Preview page URL: `https://pinme.eth.limo/#/preview/*`
+3. Fixed domain option: `https://*.pinit.eth.limo`
 
 ### Log Locations
-
-Logs and configuration files are stored in:
 
 - Linux/macOS: `~/.pinme/`
 - Windows: `%USERPROFILE%\.pinme\`
 
-## License
+---
 
-MIT License - See the [LICENSE](LICENSE) file for details
+## 🔗 PinMe Platform Features
 
-## Usage Tips
+### Preview Page
+- Access uploaded website via preview link: `https://pinme.eth.limo/#/preview/*`
+- Get fixed domain: `https://*.pinit.eth.limo`
+
+### Login and Management
+- Support user login via AppKey
+- View historical upload records
+- Manage uploaded files
+
+### Address Binding
+- Bind uploads to fixed addresses (requires Plus membership)
+- Convenient for long-term maintenance and access
+- Requires AppKey setup and Plus membership activation
+
+---
+
+## 🎯 Usage Tips
 
 ### Uploading Vite Projects
 
-When uploading projects built with Vite, please note:
-
-1. **Vite Configuration**: Add `base: "./"` to your Vite configuration file to ensure proper asset path resolution:
+When uploading projects built with Vite, ensure proper asset path resolution:
 
 ```js
 // vite.config.js
@@ -365,64 +470,43 @@ export default {
 };
 ```
 
-## GitHub Actions Integration
+### Best Practices
 
-PinMe can be integrated with GitHub Actions to automatically deploy your project when you push code to GitHub. This enables a fully automated CI/CD workflow.
+1. **Pre-upload Checks**
+   - Confirm build process completed
+   - Verify output directory exists and contains expected files
+
+2. **Security**
+   - Do not upload sensitive information
+   - Avoid uploading development config files
+
+3. **Performance Optimization**
+   - Compress images and resource files
+   - Remove unnecessary files
+
+4. **Verify Deployment**
+   - Test if preview page is accessible after upload
+   - Check if website functions normally
+
+---
+
+## 🚀 GitHub Actions Integration
+
+PinMe can be integrated with GitHub Actions for automated CI/CD deployment.
 
 ### Quick Setup
 
-1. **Add the workflow file** to your repository:
+1. **Add workflow file** to your repository:
+   - Create `.github/workflows/deploy.yml`
 
-   - Copy `.github/workflows/deploy.yml` from the PinMe repository to your project
-   - Or create `.github/workflows/deploy.yml` in your repository
+2. **Configure GitHub Secrets:**
+   - Go to repository → Settings → Secrets and variables → Actions
+   - Add `PINME_APPKEY` with your PinMe AppKey
+   - (Optional) Add `PINME_DOMAIN` for custom domain
 
-2. **Configure GitHub Secrets**:
-
-   - Go to your repository → Settings → Secrets and variables → Actions
-   - Add a new secret named `PINME_APPKEY` with your PinMe AppKey
-   - (Optional) Add `PINME_DOMAIN` to specify a custom domain name
-
-3. **Push to trigger deployment**:
-   - Push code to `main` or `master` branch to trigger automatic deployment
-   - Or manually trigger via Actions tab → "Deploy to PinMe" → Run workflow
-
-### Workflow Features
-
-The GitHub Actions workflow automatically:
-
-- ✅ Detects and installs project dependencies
-- ✅ Builds your project (if a build script exists)
-- ✅ Installs PinMe CLI
-- ✅ Sets up authentication using your AppKey
-- ✅ Auto-detects build output directory (`dist`, `build`, `public`, or `out`)
-- ✅ Uploads to IPFS and binds to your domain
-- ✅ Provides deployment summary with access URL
-
-### Configuration Options
-
-#### Using GitHub Secrets
-
-You can configure the following secrets in your repository:
-
-- **`PINME_APPKEY`** (Required): Your PinMe AppKey for authentication
-
-  - Format: `<address>-<jwt>`
-  - Get your AppKey from [PinMe website](https://pinme.eth.limo/)
-
-- **`PINME_DOMAIN`** (Optional): Default domain name to bind
-  - If not set, the workflow will generate a domain from your repository name
-  - Example: `my-awesome-project` → `https://my-awesome-project.pinit.eth.limo`
-
-#### Manual Workflow Dispatch
-
-You can also manually trigger the workflow with custom parameters:
-
-1. Go to Actions tab in your repository
-2. Select "Deploy to PinMe" workflow
-3. Click "Run workflow"
-4. Enter:
-   - **Domain**: Your desired PinMe domain name
-   - **Build Directory**: Your build output directory (default: `dist`)
+3. **Push to trigger deployment:**
+   - Push to `main` or `master` branch
+   - Or manually trigger via Actions tab
 
 ### Example Workflow
 
@@ -458,8 +542,6 @@ jobs:
 
 ### Supported Build Tools
 
-The workflow automatically detects and supports:
-
 - **Vite**: Builds to `dist/`
 - **Create React App**: Builds to `build/`
 - **Next.js**: Builds to `out/` (with `output: 'export'`)
@@ -467,34 +549,41 @@ The workflow automatically detects and supports:
 - **Angular**: Builds to `dist/`
 - **Static sites**: Uses root directory or `public/`
 
-### Troubleshooting
+### Troubleshooting GitHub Actions
 
 **Build directory not found:**
-
-- Ensure your build script outputs to a standard directory (`dist`, `build`, `public`, or `out`)
-- Or set `PINME_DOMAIN` secret and use manual workflow dispatch to specify custom directory
+- Ensure build script outputs to standard directory
+- Use manual workflow dispatch to specify custom directory
 
 **Authentication failed:**
-
-- Verify your `PINME_APPKEY` secret is correctly set
-- Ensure the AppKey format is correct: `<address>-<jwt>`
+- Verify `PINME_APPKEY` secret is correct
+- Ensure AppKey format: `<address>-<jwt>`
 
 **Domain binding failed:**
-
-- Check if the domain name is available
+- Check if domain name is available
 - Ensure you have permission to bind the domain
-- Try a different domain name
 
-## Star History
+---
 
-[![Star History Chart](https://api.star-history.com/svg?repos=glitternetwork/pinme&type=Date)](https://star-history.com/#glitternetwork/pinme&Date)
+## 📜 License
 
-## Contact Us
+MIT License - See the [LICENSE](LICENSE) file for details
+
+---
+
+## 🤝 Contact Us
 
 If you have questions or suggestions, please contact us through:
 
 - GitHub Issues: [https://github.com/glitternetwork/pinme/issues](https://github.com/glitternetwork/pinme/issues)
 - Email: [pinme@glitterprotocol.io](mailto:pinme@glitterprotocol.io)
+- Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
+
+---
+
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=glitternetwork/pinme&type=Date)](https://star-history.com/#glitternetwork/pinme&Date)
 
 ---
 
