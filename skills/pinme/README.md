@@ -1,12 +1,12 @@
 # PinMe
 
-A Claude Code skill for deploying static websites to IPFS using PinMe CLI.
+A Claude Code skill for uploading files to IPFS using PinMe CLI.
 
 ## Features
 
-- Automatically detects build output directories (`dist/`, `build/`, `out/`, `public/`)
-- Validates static file structure before upload
-- Uploads to IPFS and returns a preview URL
+- Upload any files or folders to IPFS
+- Automatically detects build output directories for website deployment (`dist/`, `build/`, `out/`, `public/`)
+- Returns a preview URL for easy sharing
 - Supports all major frontend frameworks (Vue, React, Next.js, Vite, etc.)
 
 ## Prerequisites
@@ -35,21 +35,39 @@ Copy the skill folder to `~/.claude/skills/pinme/`
 
 ## Usage
 
-After building your frontend project, simply ask Claude:
+### General File Upload
+
+Upload any files or folders to IPFS:
+
+- "Upload this file to IPFS"
+- "Pin this folder"
+- "Upload ./my-documents to pinme"
+
+### Website Deployment
+
+After building your frontend project:
 
 - "Deploy this website"
 - "Upload to pinme"
 - "Publish this frontend project"
 
-Claude will automatically:
+### What Claude Does
 
 1. Check if PinMe is installed
-2. Find your build output directory
-3. Verify it contains `index.html`
-4. Upload to IPFS
-5. Return the preview URL
+2. Identify the upload target
+3. Upload to IPFS
+4. Return the preview URL
 
-## Example Workflow
+## Example Workflows
+
+### Upload Files
+
+```bash
+# Ask Claude to upload
+> Upload ./my-documents to IPFS
+```
+
+### Deploy Website
 
 ```bash
 # Build your project
@@ -59,12 +77,15 @@ npm run build
 > Deploy the dist folder
 ```
 
-Result:
+### Result
+
 ```
 https://pinme.eth.limo/#/preview/<hash>
 ```
 
-Visit the preview page to get a fixed domain: `https://<name>.pinit.eth.limo`
+Visit the preview page to:
+- View or download uploaded files
+- Get a fixed domain: `https://<name>.pinit.eth.limo`
 
 ## Supported Frameworks
 
