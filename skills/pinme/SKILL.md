@@ -1,7 +1,7 @@
 ---
 name: pinme
 version: 1.0.0
-description: This skill should be used when the user asks to "deploy", "upload", "publish" a frontend project, static website, or build output. Also activates when user mentions "pinme", "IPFS deployment", or wants to host static files online.
+description: This skill should be used when the user asks to "deploy", "upload", "publish", or "pin" any files, folders, frontend projects, or static websites to IPFS. Also activates when user mentions "pinme", "IPFS", or wants to share files via decentralized storage.
 author:
   name: glitternetwork
   url: https://github.com/glitternetwork
@@ -11,25 +11,32 @@ license: MIT
 keywords:
   - deploy
   - ipfs
-  - static-site
+  - upload
+  - files
   - pinme
   - hosting
   - frontend
   - web3
+  - storage
 ---
 
 # PinMe Skill
 
-Use PinMe CLI to deploy static files to IPFS and get a preview URL.
+Use PinMe CLI to upload files to IPFS and get a preview URL.
 
 ## When to Use
 
+### General File Upload
+- User wants to upload any files or folders to IPFS
+- User wants to share files via decentralized storage
+- User mentions "pinme", "pin", "IPFS", or "upload to IPFS"
+
+### Website Deployment
 - User requests deployment of a frontend project
-- User wants to upload static files/website
-- User mentions "pinme", "deploy", "publish", or "host"
+- User wants to deploy a static website
 - After building a frontend project (Vue, React, Next.js, etc.)
 
-## Deployment Steps
+## Upload Steps
 
 ### 1. Check if PinMe is Installed
 
@@ -42,73 +49,94 @@ If not installed:
 npm install -g pinme
 ```
 
-### 2. Identify Static Files Directory
+### 2. Identify Upload Target
 
-Look for these directories (in priority order):
+**For general files:**
+- Use the file or directory path specified by the user
+- Can be any file type: images, documents, archives, etc.
+
+**For website deployment:**
+Look for build output directories (in priority order):
 1. `dist/` - Vue/React/Vite default output
 2. `build/` - Create React App output
 3. `out/` - Next.js static export
 4. `public/` - Pure static projects
 
-**Validation rules:**
-- Directory must exist
-- Must contain `index.html` (for websites)
-- Should contain static assets (CSS, JS, images)
-
 ### 3. Execute Upload
 
 ```bash
-pinme upload <directory>
+pinme upload <path>
 ```
 
 Examples:
 ```bash
+# Upload a single file
+pinme upload ./document.pdf
+
+# Upload a folder
+pinme upload ./my-folder
+
+# Upload website build output
 pinme upload dist
-pinme upload build
-pinme upload ./my-static-site
 ```
 
 ### 4. Return Result
 
-After successful upload, return only the preview URL:
+After successful upload, return the preview URL:
 ```
 https://pinme.eth.limo/#/preview/<hash>
 ```
 
 Users can visit the preview page to:
-- View the deployed website
+- View or download the uploaded files
 - Get a fixed domain: `https://<name>.pinit.eth.limo`
 
 ## Important Rules
 
 **DO:**
-- Verify build output exists before uploading
-- Check for `index.html` in the upload directory
+- Verify the file or directory exists before uploading
 - Return the preview URL to the user
 
 **DO NOT:**
 - Upload `node_modules/`
 - Upload `.env` files
 - Upload `.git/` directory
-- Upload source code (use build output only)
-- Upload configuration files (package.json, tsconfig.json, etc.)
-- Upload empty or non-existent directories
+- Upload empty or non-existent paths
+
+**For website deployment, also avoid:**
+- Uploading source code instead of build output
+- Uploading configuration files (package.json, tsconfig.json, etc.)
 
 ## Common Workflows
 
-### Build and Deploy (Vue/Vite)
+### General File Upload
+
+```bash
+# Upload a single file
+pinme upload ./image.png
+
+# Upload a folder
+pinme upload ./my-documents
+
+# Upload with specific path
+pinme upload /path/to/files
+```
+
+### Website Deployment
+
+#### Vue/Vite
 ```bash
 npm run build
 pinme upload dist
 ```
 
-### Build and Deploy (React CRA)
+#### React CRA
 ```bash
 npm run build
 pinme upload build
 ```
 
-### Build and Deploy (Next.js Static)
+#### Next.js Static
 ```bash
 npm run build
 npm run export  # or next export
@@ -120,8 +148,8 @@ pinme upload out
 | Error | Solution |
 |-------|----------|
 | `command not found: pinme` | Run `npm install -g pinme` |
-| `No such file or directory` | Check path, run build first |
-| `Permission denied` | Check folder permissions |
+| `No such file or directory` | Check path exists |
+| `Permission denied` | Check file/folder permissions |
 | Upload failed | Check network, retry |
 
 ## Other Commands
