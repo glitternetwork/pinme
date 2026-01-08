@@ -27,7 +27,7 @@ Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Quick Start](#quick-start)
 - [For AI Assistants](#for-ai-assistants)
@@ -41,7 +41,7 @@ Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - **Node.js 16.13.0 or higher** required
@@ -80,7 +80,7 @@ That's it! You'll get a preview URL like `https://pinme.eth.limo/#/preview/*`
 
 ---
 
-## 🤖 For AI Assistants
+## For AI Assistants
 
 This section provides AI-specific instructions for deploying websites using PinMe CLI.
 
@@ -181,7 +181,7 @@ For easy AI tool parsing:
 
 ---
 
-## 📦 Installation
+## Installation
 
 ### Using npm
 
@@ -204,7 +204,7 @@ pinme --version
 
 ---
 
-## 💡 Usage
+## Usage
 
 ### Upload Files or Directories
 
@@ -375,7 +375,7 @@ List all domains owned by the current account.
 
 ---
 
-## ⚠️ Error Handling
+## Error Handling
 
 ### Common Errors and Solutions
 
@@ -415,7 +415,7 @@ Error: Permission denied
 
 ---
 
-## 📊 Upload Limits
+## Upload Limits
 
 | Type | Free Plan |
 |------|-----------|
@@ -438,7 +438,7 @@ Uploaded files are stored on the IPFS network and accessible through the Glitter
 
 ---
 
-## 🔗 PinMe Platform Features
+## PinMe Platform Features
 
 ### Preview Page
 - Access uploaded website via preview link: `https://pinme.eth.limo/#/preview/*`
@@ -456,7 +456,7 @@ Uploaded files are stored on the IPFS network and accessible through the Glitter
 
 ---
 
-## 🎯 Usage Tips
+## Usage Tips
 
 ### Uploading Vite Projects
 
@@ -490,7 +490,7 @@ export default {
 
 ---
 
-## 🚀 GitHub Actions Integration
+## GitHub Actions Integration
 
 PinMe can be integrated with GitHub Actions for automated CI/CD deployment.
 
@@ -565,13 +565,13 @@ jobs:
 
 ---
 
-## 📜 License
+## License
 
 MIT License - See the [LICENSE](LICENSE) file for details
 
 ---
 
-## 🤝 Contact Us
+## Contact Us
 
 If you have questions or suggestions, please contact us through:
 
@@ -581,7 +581,7 @@ If you have questions or suggestions, please contact us through:
 
 ---
 
-## ⭐ Star History
+## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=glitternetwork/pinme&type=Date)](https://star-history.com/#glitternetwork/pinme&Date)
 
