@@ -93,4 +93,90 @@ export async function getMyDomains(): Promise<MyDomainItem[]> {
   return [];
 }
 
+// CAR Export API
+const CAR_API_BASE = process.env.CAR_API_BASE || process.env.PINME_API_BASE || 'http://ipfs-proxy.opena.chat/api/v3';
+
+function createCarClient(): AxiosInstance {
+  let headers = {};
+  try {
+    headers = getAuthHeaders();
+  } catch (e) {
+    // Auth not required for some endpoints, continue without auth headers
+  }
+  return axios.create({
+    baseURL: CAR_API_BASE,
+    timeout: 20000,
+    headers: {
+      ...headers,
+      Accept: '*/*',
+      'Content-Type': 'application/json',
+      'User-Agent': 'Pinme-CLI',
+      Connection: 'keep-alive',
+    },
+  });
+}
+
+export interface CarExportResponse {
+  code: number;
+  msg: string;
+  data: {
+    cid: string;
+    status: string;
+    task_id: string;
+  };
+}
+
+export interface CarExportStatusResponse {
+  code: number;
+  msg: string;
+  data: {
+    task_id: string;
+    cid: string;
+    status: 'processing' | 'completed' | 'failed';
+    download_url?: string;
+  };
+}
+
+export async function requestCarExport(cid: string, uid: string): Promise<CarExportResponse['data']> {
+  try {
+    const client = createCarClient();
+    // Use POST method as shown in the example
+    const { data } = await client.post<CarExportResponse>('/car/export', null, {
+      params: {
+        cid,
+        uid,
+      },
+    });
+    if (data?.code === 200 && data?.data) {
+      return data.data;
+    }
+    throw new Error(data?.msg || 'Failed to request CAR export');
+  } catch (e: any) {
+    if (e.response?.data?.msg) {
+      throw new Error(e.response.data.msg);
+    }
+    throw new Error(`Failed to request CAR export: ${e?.message || e}`);
+  }
+}
+
+export async function checkCarExportStatus(taskId: string): Promise<CarExportStatusResponse['data']> {
+  try {
+    const client = createCarClient();
+    const { data } = await client.get<CarExportStatusResponse>('/car/export/status', {
+      params: {
+        task_id: taskId,
+      },
+    });
+    if (data?.code === 200 && data?.data) {
+      return data.data;
+    }
+    throw new Error(data?.msg || 'Failed to check export status');
+  } catch (e: any) {
+    if (e.response?.data?.msg) {
+      throw new Error(e.response.data.msg);
+    }
+    throw new Error(`Failed to check export status: ${e?.message || e}`);
+  }
+}
+
 
