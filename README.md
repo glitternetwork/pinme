@@ -303,7 +303,7 @@ The selected directory must meet:
 
 ---
 
-## 🛠️ Command Details
+## Command Details
 
 ### `upload`
 
