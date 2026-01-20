@@ -16,7 +16,7 @@
 [PinMe](https://pinme.eth.limo/) is a zero-config frontend deployment tool.
 No servers. No accounts. No setup.
 
-Build a static site, generate a page with AI, or export your frontend — then deploy instantly with a single command.
+Build a static site, generate a page with AI, export your frontend, or import CAR files — then deploy instantly with a single command.
 
 PinMe publishes your site as verifiable content, making silent tampering and accidental breakage far harder than traditional hosting.
 
@@ -157,6 +157,8 @@ For easy AI tool parsing:
   "other_commands": {
     "version": "pinme --version",
     "list": "pinme list",
+    "import": "pinme import <car-file>",
+    "export": "pinme export <cid>",
     "set_appkey": "pinme set-appkey",
     "show_appkey": "pinme show-appkey",
     "my_domains": "pinme my-domains",
@@ -219,6 +221,36 @@ pinme upload /path/to/file-or-directory
 pinme upload /path/to/file-or-directory --domain <name>
 pinme upload /path/to/file-or-directory -d <name>
 ```
+
+### Import CAR files
+
+```bash
+# Interactive CAR import
+pinme import
+
+# Specify CAR file path directly
+pinme import /path/to/car-file.car
+
+# Import CAR file and bind to a domain
+pinme import /path/to/car-file.car --domain <name>
+pinme import /path/to/car-file.car -d <name>
+```
+
+### Export IPFS Content as CAR files
+
+```bash
+# Interactive CAR export
+pinme export
+
+# Specify CID directly
+pinme export <CID>
+
+# Export with custom output path
+pinme export <CID> --output /path/to/output.car
+pinme export <CID> -o /path/to/output.car
+```
+
+**Note:** By default, exported CAR files are saved to your system's Downloads directory.
 
 ### View Upload History
 
@@ -328,6 +360,74 @@ pinme upload dist --domain my-site
 # Upload a specific file
 pinme upload ./example.jpg
 ```
+
+### `import`
+
+Import CAR (Content Addressable aRchive) files to the IPFS network. This command is specifically designed for importing CAR files while maintaining their original structure. Supports binding to a Pinme subdomain after import.
+
+```bash
+pinme import [path] [--domain <name>]
+```
+
+**Options:**
+- `path`: Path to the CAR file to import (optional, if not provided, interactive mode will be entered)
+- `-d, --domain <name>`: Pinme subdomain to bind after import (optional)
+
+**Examples:**
+```bash
+# Interactive CAR import
+pinme import
+
+# Import a specific CAR file
+pinme import ./my-archive.car
+
+# Import CAR file and bind to a domain
+pinme import ./my-archive.car --domain my-archive
+pinme import ./my-archive.car -d my-archive
+```
+
+**Key Differences from `upload`:**
+- CAR files are imported with their original structure preserved
+- Uses IPFS CAR import protocol for efficient content addressing
+- Ideal for importing previously exported IPFS content
+- Same domain binding and management features as `upload`
+
+### `export`
+
+Export IPFS content as a CAR (Content Addressable aRchive) file.
+
+```bash
+pinme export [CID] [--output <path>]
+```
+
+**Options:**
+- `CID`: IPFS content identifier (CID) to export (optional, interactive if not provided)
+- `-o, --output <path>`: Output file path for the CAR file (optional, defaults to Downloads directory)
+
+**Examples:**
+```bash
+# Interactive CAR export
+pinme export
+
+# Export a specific CID
+pinme export bafybeiakzpeep2jw5cvsyfa66nqxmjurmarw3a34moxpgrbz7s75v7nune
+
+# Export with custom output path
+pinme export bafybeiakzpeep2jw5cvsyfa66nqxmjurmarw3a34moxpgrbz7s75v7nune --output ./my-export.car
+pinme export bafybeiakzpeep2jw5cvsyfa66nqxmjurmarw3a34moxpgrbz7s75v7nune -o ./my-export.car
+```
+
+**Features:**
+- Exports IPFS content as CAR files for backup or migration
+- Default output location: system Downloads directory (`~/Downloads` on macOS/Linux, `%USERPROFILE%\Downloads` on Windows)
+- Supports interactive mode for easy CID input
+- Shows progress during export generation and file download
+- CAR files preserve original content structure and CID relationships
+
+**Note:** Export is an asynchronous process. The command will:
+1. Request export task creation
+2. Poll export status (every 5 seconds) until completion
+3. Download the generated CAR file to your specified location
 
 ### `rm`
 
@@ -468,6 +568,39 @@ export default {
   base: './',
   // other configurations...
 };
+```
+
+### Working with CAR Files
+
+PinMe supports both importing and exporting CAR (Content Addressable aRchive) files:
+
+#### Importing CAR Files
+
+When using the `import` command for CAR files:
+
+1. **CAR File Format**: Ensure your files have the `.car` extension and follow the IPFS CAR specification
+2. **Content Integrity**: CAR files preserve the original content structure and CID relationships
+3. **Use Cases**: Ideal for importing previously exported IPFS content, migrating between IPFS nodes, or batch content transfers
+4. **Size Considerations**: CAR files can be large, ensure you have sufficient bandwidth and storage space
+
+#### Exporting CAR Files
+
+When using the `export` command:
+
+1. **Export Process**: Export is asynchronous - the command will create an export task and poll for completion
+2. **Output Location**: By default, exported CAR files are saved to your system's Downloads directory
+3. **Custom Path**: Use `--output` or `-o` to specify a custom output location
+4. **CID Format**: Supports CIDv0 (starting with `Qm`) and CIDv1 (starting with `bafy`, `bafk`, or `bafz`)
+5. **Use Cases**: Backup IPFS content, migrate content between nodes, or archive specific IPFS content
+
+#### CAR File Workflow
+
+```bash
+# Export IPFS content to CAR file
+pinme export <CID>
+
+# Later, import the CAR file back to IPFS
+pinme import ~/Downloads/<CID>.car
 ```
 
 ### Best Practices

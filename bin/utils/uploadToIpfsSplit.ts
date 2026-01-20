@@ -451,11 +451,16 @@ async function uploadFileChunks(
 async function completeChunkUpload(
   sessionId: string,
   deviceId: string,
+  importAsCar: boolean = false,
 ): Promise<string> {
   try {
+    const requestBody: any = { session_id: sessionId, uid: deviceId };
+    if (importAsCar) {
+      requestBody.import_as_car = true;
+    }
     const response = await axios.post<ChunkCompleteResponse>(
       `${IPFS_API_URL}/chunk/complete`,
-      { session_id: sessionId, uid: deviceId },
+      requestBody,
       {
         timeout: TIMEOUT,
         headers: { 'Content-Type': 'application/json' },
@@ -555,6 +560,7 @@ async function monitorChunkProgress(
 async function uploadDirectoryInChunks(
   directoryPath: string,
   deviceId: string,
+  importAsCar: boolean = false,
 ): Promise<UploadResult | null> {
   const sizeCheck = checkDirectorySizeLimit(directoryPath);
   if (sizeCheck.exceeds) {
@@ -588,7 +594,7 @@ async function uploadDirectoryInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(3, 'Completing upload');
-    const traceId = await completeChunkUpload(sessionInfo.session_id, deviceId);
+    const traceId = await completeChunkUpload(sessionInfo.session_id, deviceId, importAsCar);
     progressBar.completeStep();
 
     progressBar.startStep(4, 'Waiting for processing');
@@ -629,6 +635,7 @@ async function uploadDirectoryInChunks(
 async function uploadFileInChunks(
   filePath: string,
   deviceId: string,
+  importAsCar: boolean = false,
 ): Promise<UploadResult | null> {
   const sizeCheck = checkFileSizeLimit(filePath);
   if (sizeCheck.exceeds) {
@@ -659,7 +666,7 @@ async function uploadFileInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(2, 'Completing upload');
-    const traceId = await completeChunkUpload(sessionInfo.session_id, deviceId);
+    const traceId = await completeChunkUpload(sessionInfo.session_id, deviceId, importAsCar);
     progressBar.completeStep();
 
     progressBar.startStep(3, 'Waiting for processing');
@@ -692,7 +699,7 @@ async function uploadFileInChunks(
 }
 
 // Main export function
-export default async function (filePath: string): Promise<{
+export default async function (filePath: string, importAsCar: boolean = false): Promise<{
   contentHash: string;
   previewHash?: string | null;
   shortUrl?: string;
@@ -704,9 +711,9 @@ export default async function (filePath: string): Promise<{
 
   try {
     const isDirectory = fs.statSync(filePath).isDirectory();
-    const result = isDirectory
-      ? await uploadDirectoryInChunks(filePath, deviceId)
-      : await uploadFileInChunks(filePath, deviceId);
+    const result = isDirectory 
+      ? await uploadDirectoryInChunks(filePath, deviceId, importAsCar)
+      : await uploadFileInChunks(filePath, deviceId, importAsCar);
 
     if (result?.hash) {
       return {
