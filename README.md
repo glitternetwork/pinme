@@ -80,7 +80,7 @@ That's it! You'll get a preview URL like `https://pinme.eth.limo/#/preview/*`
 
 ---
 
-## For AI Assistants
+## For AI
 
 This section provides AI-specific instructions for deploying websites using PinMe CLI.
 
