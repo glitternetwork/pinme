@@ -113,11 +113,9 @@ function getCidFromArgs(): string | null {
   return null;
 }
 
-// Get system downloads directory
-function getDownloadsDirectory(): string {
-  const homeDir = os.homedir();
-  // macOS and Linux use ~/Downloads, Windows uses %USERPROFILE%\Downloads
-  return path.join(homeDir, 'Downloads');
+// Get current working directory
+function getCurrentDirectory(): string {
+  return process.cwd();
 }
 
 // Get output path from command line arguments
@@ -169,39 +167,44 @@ export default async (): Promise<void> => {
       return;
     }
 
-    // Get output path
-    let outputPath = getOutputPathFromArgs();
-    if (!outputPath) {
-      const downloadsDir = getDownloadsDirectory();
-      const defaultFileName = `${cid}.car`;
-      const defaultPath = path.join(downloadsDir, defaultFileName);
+    // Get output directory (output parameter is always a directory, not a file)
+    let outputDir = getOutputPathFromArgs();
+    if (!outputDir) {
+      // Default to current directory
+      const currentDir = getCurrentDirectory();
       const answer = await inquirer.prompt([
         {
           type: 'input',
           name: 'output',
-          message: `Output file path (default: ${defaultPath}): `,
-          default: defaultPath,
+          message: `Output directory (default: ${currentDir}): `,
+          default: currentDir,
         },
       ]);
-      outputPath = answer.output.trim() || defaultPath;
+      outputDir = answer.output.trim() || currentDir;
     }
 
     // Convert to absolute path
-    outputPath = path.resolve(outputPath);
+    outputDir = path.resolve(outputDir);
 
-    // Check if output directory exists
-    const outputDir = path.dirname(outputPath);
+    // Create directory if it doesn't exist
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
+    } else if (!fs.statSync(outputDir).isDirectory()) {
+      // If path exists but is not a directory, show error
+      console.log(chalk.red(`Error: ${outputDir} exists but is not a directory.`));
+      return;
     }
 
+    // Final output path is always {outputDir}/{cid}.car
+    const finalOutputPath = path.join(outputDir, `${cid}.car`);
+
     // Check if file already exists
-    if (fs.existsSync(outputPath)) {
+    if (fs.existsSync(finalOutputPath)) {
       const answer = await inquirer.prompt([
         {
           type: 'confirm',
           name: 'overwrite',
-          message: `File ${outputPath} already exists. Overwrite?`,
+          message: `File ${finalOutputPath} already exists. Overwrite?`,
           default: false,
         },
       ]);
@@ -236,9 +239,9 @@ export default async (): Promise<void> => {
       }
 
       // Step 3: Download CAR file
-      const success = await downloadCarFile(downloadUrl, outputPath);
+      const success = await downloadCarFile(downloadUrl, finalOutputPath);
       if (success) {
-        const fileSize = fs.statSync(outputPath).size;
+        const fileSize = fs.statSync(finalOutputPath).size;
         const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
         console.log(
           chalk.cyan(
@@ -246,7 +249,7 @@ export default async (): Promise<void> => {
           ),
         );
         console.log(chalk.green(`\n🎉 Export successful!`));
-        console.log(chalk.cyan(`File: ${outputPath}`));
+        console.log(chalk.cyan(`File: ${finalOutputPath}`));
         console.log(chalk.cyan(`Size: ${fileSizeMB} MB`));
         console.log(chalk.cyan(`CID: ${cid}`));
       } else {
