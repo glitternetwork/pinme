@@ -30,7 +30,7 @@ Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 ## Table of Contents
 
 - [Quick Start](#quick-start)
-- [For AI Assistants](#for-ai-assistants)
+- [For AI](#for-ai)
 - [Installation](#installation)
 - [Usage](#usage)
 - [Common Static File Directories](#common-static-file-directories)
