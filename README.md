@@ -115,12 +115,18 @@ This section provides AI-specific instructions for deploying websites using PinM
 
    If no suitable folder is found, ask the user to specify the upload path.
 
-4. **Execute Deployment Command**
+   **Router Mode Check:**
+   - Ensure the project uses **hash mode** router (e.g., `/#/about`)
+   - History mode (e.g., `/about`) will cause 404 on sub-routes when deployed to IPFS
+   - For React: use `HashRouter` instead of `BrowserRouter`
+   - For Vue: use `createHashHistory()` instead of `createWebHistory()`
+
+5. **Execute Deployment Command**
    ```bash
    pinme upload <folder_path>
    ```
 
-5. **Return Result**
+6. **Return Result**
    - Only return final preview page URL: `https://pinme.eth.limo/#/preview/*`
    - Do not output additional logs or intermediate steps
 
@@ -620,6 +626,7 @@ pinme import ~/Downloads/<CID>.car
 4. **Verify Deployment**
    - Test if preview page is accessible after upload
    - Check if website functions normally
+   - **Ensure router is configured to use hash mode** (e.g., `/#/path` instead of `/path`)
 
 ---
 
