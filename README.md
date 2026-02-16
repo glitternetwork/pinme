@@ -33,6 +33,9 @@ Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 - [For AI](#for-ai)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Bind Domain](#bind-domain-requires-vip)
+- [Command Details](#command-details)
+- [VIP Membership](#vip-membership)
 - [Common Static File Directories](#common-static-file-directories)
 - [Error Handling](#error-handling)
 - [Upload Limits](#upload-limits)
@@ -216,10 +219,30 @@ pinme upload
 
 # Specify path directly
 pinme upload /path/to/file-or-directory
+```
 
-# Upload and bind to a domain
-pinme upload /path/to/file-or-directory --domain <name>
-pinme upload /path/to/file-or-directory -d <name>
+### Bind Domain (requires VIP)
+
+```bash
+# Upload and bind to a domain (auto-detected: Pinme subdomain or DNS domain)
+pinme bind <path> --domain <name>
+pinme bind <path> -d <name>
+```
+
+**Smart Auto-Detection:**
+- Domains with a dot (e.g., `example.com`) → **DNS domain**
+- Domains without a dot (e.g., `my-site`) → **Pinme subdomain**
+
+**Examples:**
+```bash
+# Bind to a Pinme subdomain (auto-detected)
+pinme bind ./dist --domain my-site
+
+# Bind to a DNS domain (auto-detected by the dot)
+pinme bind ./dist --domain example.com
+
+# Force DNS mode if needed
+pinme bind ./dist --domain my-site --dns
 ```
 
 ### Import CAR files
@@ -337,6 +360,51 @@ The selected directory must meet:
 
 ## Command Details
 
+### `bind`
+
+Upload files and bind them to a custom domain. **Domain binding requires VIP membership.**
+
+```bash
+pinme bind <path> [options]
+```
+
+**Options:**
+- `path`: Path to the file or directory to upload (optional, interactive if not provided)
+- `-d, --domain <name>`: Domain name to bind (required)
+- `--dns`: Force DNS domain mode (optional, auto-detected from domain format)
+
+**Examples:**
+```bash
+# Interactive mode (will prompt for path and domain)
+pinme bind
+
+# Bind to a Pinme subdomain (auto-detected: no dot in domain)
+pinme bind ./dist --domain my-site
+
+# Bind to a DNS domain (auto-detected: contains dot)
+pinme bind ./dist --domain example.com
+
+# Force DNS mode with --dns flag
+pinme bind ./dist --domain my-site --dns
+```
+
+**Auto-Detection:**
+- Domains with a dot (e.g., `example.com`) are automatically treated as **DNS domains**
+- Domains without a dot (e.g., `my-site`) are automatically treated as **Pinme subdomains**
+- Use `--dns` or `-D` flag to force DNS domain mode when needed
+
+**Requirements:**
+- VIP membership required for domain binding
+- Valid AppKey must be set (run: `pinme set-appkey <AppKey>`)
+- For DNS domains, you must own the domain
+
+**URL Formats:**
+- Pinme subdomain: `https://<name>.pinit.eth.limo`
+- DNS domain: `https://<your-domain>`
+
+**DNS Setup:**
+After successful DNS domain binding, visit the [DNS Configuration Guide](https://pinme.eth.limo/#/docs?id=custom-domain) to complete DNS setup.
+
 ### `upload`
 
 Upload a file or directory to the IPFS network.
@@ -347,19 +415,21 @@ pinme upload [path] [--domain <name>]
 
 **Options:**
 - `path`: Path to the file or directory to upload (optional, interactive if not provided)
-- `-d, --domain <name>`: Pinme subdomain to bind after upload (optional)
+- `-d, --domain <name>`: Pinme subdomain to bind after upload (optional, requires VIP)
 
 **Examples:**
 ```bash
 # Upload dist directory
 pinme upload dist
 
-# Upload and bind to a domain (requires Plus membership)
-pinme upload dist --domain my-site
+# Upload only (no domain binding)
+pinme upload dist
 
 # Upload a specific file
 pinme upload ./example.jpg
 ```
+
+**Note:** Domain binding during upload requires VIP. Use the `bind` command for domain binding.
 
 ### `import`
 
@@ -472,6 +542,51 @@ Log out and clear authentication information from local storage.
 ### `my-domains` / `domain`
 
 List all domains owned by the current account.
+
+---
+
+## VIP Membership
+
+### Overview
+
+VIP membership provides access to premium features including domain binding and custom DNS support.
+
+### VIP Features
+
+| Feature | Free | VIP |
+|---------|------|-----|
+| Upload files to IPFS | ✅ | ✅ |
+| Preview URL | ✅ | ✅ |
+| Pinme subdomain binding | ❌ | ✅ |
+| Custom DNS domain binding | ❌ | ✅ |
+| Priority support | ❌ | ✅ |
+
+### Domain Binding Requirements
+
+Domain binding (both Pinme subdomains and custom DNS domains) requires VIP membership.
+
+**Before using domain binding:**
+
+1. **Upgrade to VIP**
+   - Visit [PinMe website](https://pinme.eth.limo/) to upgrade
+
+2. **Set AppKey**
+   ```bash
+   pinme set-appkey <AppKey>
+   ```
+
+3. **Bind your domain**
+   ```bash
+   # Bind to a Pinme subdomain
+   pinme bind ./dist --domain my-site
+
+   # Bind to a custom DNS domain
+   pinme bind ./dist --domain example.com --dns
+   ```
+
+### Checking VIP Status
+
+If you attempt to bind a domain without VIP, you'll see an error message. You can check your VIP status on the [PinMe website](https://pinme.eth.limo/).
 
 ---
 

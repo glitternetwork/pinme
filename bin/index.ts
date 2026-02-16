@@ -19,6 +19,7 @@ import setAppKeyCmd from './set-appkey';
 import logoutCmd from './logout';
 import showAppKeyCmd from './show-appkey';
 import myDomainsCmd from './my-domains';
+import bindCmd from './bind';
 
 // display the ASCII art logo
 function showBanner(): void {
@@ -40,7 +41,8 @@ program
   .description(
     'upload a file or directory to IPFS. Supports --domain to bind after upload',
   )
-  .option('-d, --domain <name>', 'Pinme subdomain')
+  .option('-d, --domain <name>', 'Domain name to bind')
+  .option('--dns', 'Force DNS domain mode')
   .action(() => upload());
 
 program
@@ -83,6 +85,13 @@ program
   .alias('domain')
   .description('List domains owned by current account')
   .action(() => myDomainsCmd());
+
+program
+  .command('bind')
+  .description('Upload and bind to a domain (requires VIP)')
+  .option('-d, --domain <name>', 'Domain name to bind')
+  .option('--dns', 'Force DNS domain mode')
+  .action(() => bindCmd());
 
 program
   .command('domain')
