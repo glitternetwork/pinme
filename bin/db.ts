@@ -17,7 +17,6 @@ import { getAuthConfig } from './utils/auth';
 function requireProject(): { projectId: string } {
   const auth = getAuthConfig();
   if (!auth) { console.log(chalk.red('Not logged in. Run: pinme login')); process.exit(1); }
-
   const projectData = readProjectData();
   if (!projectData) {
     console.log(chalk.red('No project found in current directory. Run: pinme worker deploy'));
@@ -26,7 +25,7 @@ function requireProject(): { projectId: string } {
   return { projectId: projectData.project_id };
 }
 
-export async function dbMigrate(): Promise<void> {
+export async function dbMigrate(opts: { dryRun?: boolean }): Promise<void> {
   const { projectId } = requireProject();
 
   let config;
@@ -57,8 +56,7 @@ export async function dbMigrate(): Promise<void> {
     return;
   }
 
-  const isDryRun = process.argv.includes('--dry-run');
-  if (isDryRun) {
+  if (opts.dryRun) {
     console.log(chalk.cyan('Migrations that would run:'));
     for (const f of files) console.log(`  ${f}`);
     return;
@@ -86,13 +84,7 @@ export async function dbMigrate(): Promise<void> {
   }
 }
 
-export function dbMigrateCreate(): void {
-  const nameArg = process.argv[5]; // pinme db migrate:create <name>
-  if (!nameArg) {
-    console.log(chalk.red('Usage: pinme db migrate:create <name>'));
-    process.exit(1);
-  }
-
+export function dbMigrateCreate(name: string): void {
   let config;
   try {
     config = readWorkerConfig();
@@ -104,9 +96,9 @@ export function dbMigrateCreate(): void {
   const migrationsDir = path.join(process.cwd(), config.d1?.migrations_dir ?? 'schema');
   fs.mkdirpSync(migrationsDir);
 
-  const existing = fs.existsSync(migrationsDir)
-    ? fs.readdirSync(migrationsDir).filter((f: string) => f.endsWith('.sql')).sort()
-    : [];
+  const existing = fs.readdirSync(migrationsDir)
+    .filter((f: string) => f.endsWith('.sql'))
+    .sort();
 
   let nextNum = 1;
   if (existing.length > 0) {
@@ -115,34 +107,24 @@ export function dbMigrateCreate(): void {
   }
 
   const numStr = String(nextNum).padStart(3, '0');
-  const safeName = nameArg.replace(/[^a-z0-9_]/gi, '_').toLowerCase();
+  const safeName = name.replace(/[^a-z0-9_]/gi, '_').toLowerCase();
   const filename = `${numStr}_${safeName}.sql`;
-  const filepath = path.join(migrationsDir, filename);
-
-  fs.writeFileSync(filepath, `-- Migration: ${filename}\n-- Created: ${new Date().toISOString()}\n\n`);
+  fs.writeFileSync(
+    path.join(migrationsDir, filename),
+    `-- Migration: ${filename}\n-- Created: ${new Date().toISOString()}\n\n`,
+  );
 
   console.log(chalk.green(`Created: ${config.d1?.migrations_dir ?? 'schema'}/${filename}`));
 }
 
-export async function dbQuery(): Promise<void> {
+export async function dbQuery(sql: string, opts: { json?: boolean }): Promise<void> {
   const { projectId } = requireProject();
-
-  // Find SQL arg (first non-flag after 'query')
-  const queryIdx = process.argv.indexOf('query');
-  const sql = queryIdx !== -1 ? process.argv[queryIdx + 1] : undefined;
-
-  if (!sql) {
-    console.log(chalk.red('Usage: pinme db query "<sql>"'));
-    process.exit(1);
-  }
-
-  const isJson = process.argv.includes('--json');
 
   try {
     const result = await queryDb(projectId, sql);
     const rows = result.results as Record<string, unknown>[];
 
-    if (isJson) {
+    if (opts.json) {
       console.log(JSON.stringify(rows, null, 2));
       return;
     }

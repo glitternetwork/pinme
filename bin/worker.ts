@@ -3,12 +3,14 @@
  *
  * Manage Cloudflare Worker backends via api.pinme.pro.
  *
- *   pinme worker init [name] [--template blank|rest-api|auth-api]
+ *   pinme worker init [name] [--template blank|rest-api]
  *   pinme worker deploy [--message <msg>] [--dry-run]
  *   pinme worker status
  *   pinme worker destroy [--confirm]
  *   pinme worker logs
  *   pinme worker dev [--port <port>]
+ *   pinme worker list
+ *   pinme worker secret set/list/delete/import
  */
 
 import chalk from 'chalk';
@@ -22,6 +24,9 @@ import {
   deployWorker,
   getWorkerStatus,
   destroyWorker,
+  listWorkerProjects,
+  setWorkerSecrets,
+  deleteWorkerSecret,
   WorkerApiError,
   WORKER_API_BASE,
 } from './utils/worker-api';
@@ -102,27 +107,28 @@ node_modules/
 
 // ── init ──────────────────────────────────────────────────────────────────────
 
-export async function workerInit(): Promise<void> {
-  const argName = process.argv[4];
-  let name: string = argName && !argName.startsWith('-') ? argName : '';
-
+export async function workerInit(
+  name: string | undefined,
+  opts: { template?: string },
+): Promise<void> {
   if (!name) {
     const ans = await inquirer.prompt([
-      { type: 'input', name: 'name', message: 'Project name:', validate: (v: string) =>
-        /^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(v.trim()) || v.trim().length === 1
-          ? true
-          : 'Lowercase letters, numbers and hyphens only.' },
+      {
+        type: 'input',
+        name: 'name',
+        message: 'Project name:',
+        validate: (v: string) =>
+          /^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(v.trim()) || v.trim().length === 1
+            ? true
+            : 'Lowercase letters, numbers and hyphens only.',
+      },
     ]);
     name = ans.name.trim();
   }
 
-  // Find template flag
-  const tmplIdx = process.argv.indexOf('--template');
-  const template = (tmplIdx !== -1 ? process.argv[tmplIdx + 1] : 'blank') as
-    | 'blank'
-    | 'rest-api';
-
+  const template = (opts.template ?? 'blank') as 'blank' | 'rest-api';
   const targetDir = path.resolve(process.cwd(), name);
+
   if (fs.existsSync(targetDir)) {
     console.log(chalk.red(`Directory "${name}" already exists.`));
     process.exit(1);
@@ -131,9 +137,6 @@ export async function workerInit(): Promise<void> {
   fs.mkdirpSync(path.join(targetDir, 'src'));
   if (template === 'rest-api') {
     fs.mkdirpSync(path.join(targetDir, 'schema'));
-  }
-
-  if (template === 'rest-api') {
     fs.writeFileSync(path.join(targetDir, 'src', 'worker.ts'), REST_API_WORKER);
     fs.writeFileSync(path.join(targetDir, 'pinme.toml'), REST_API_TOML(name));
     fs.writeFileSync(path.join(targetDir, 'schema', '001_init.sql'), REST_API_MIGRATION);
@@ -155,16 +158,14 @@ export async function workerInit(): Promise<void> {
 
 // ── deploy ────────────────────────────────────────────────────────────────────
 
-export async function workerDeploy(): Promise<void> {
+export async function workerDeploy(
+  opts: { message?: string; dryRun?: boolean },
+): Promise<void> {
   const auth = getAuthConfig();
   if (!auth) {
     console.log(chalk.red('Not logged in. Run: pinme login'));
     process.exit(1);
   }
-
-  const dryRunIdx = process.argv.indexOf('--dry-run');
-  const msgIdx = process.argv.indexOf('--message');
-  const message = msgIdx !== -1 ? process.argv[msgIdx + 1] : undefined;
 
   let config;
   try {
@@ -174,7 +175,7 @@ export async function workerDeploy(): Promise<void> {
     process.exit(1);
   }
 
-  if (dryRunIdx !== -1) {
+  if (opts.dryRun) {
     console.log(chalk.cyan(`Dry run: would deploy "${config.name}"`));
     console.log(`  Database: ${config.d1 ? 'yes' : 'no'}`);
     return;
@@ -196,9 +197,14 @@ export async function workerDeploy(): Promise<void> {
   if (config.d1) {
     const migrationsDir = path.join(process.cwd(), config.d1.migrations_dir);
     if (fs.existsSync(migrationsDir)) {
-      const files = fs.readdirSync(migrationsDir).filter((f: string) => f.endsWith('.sql')).sort();
+      const files = fs.readdirSync(migrationsDir)
+        .filter((f: string) => f.endsWith('.sql'))
+        .sort();
       for (const file of files) {
-        migrations.push({ filename: file, sql: fs.readFileSync(path.join(migrationsDir, file), 'utf-8') });
+        migrations.push({
+          filename: file,
+          sql: fs.readFileSync(path.join(migrationsDir, file), 'utf-8'),
+        });
       }
     }
   }
@@ -213,7 +219,7 @@ export async function workerDeploy(): Promise<void> {
       config,
       workerCode: buildResult.code,
       migrations,
-      message,
+      message: opts.message,
       projectId: projectData?.project_id,
     });
 
@@ -222,8 +228,8 @@ export async function workerDeploy(): Promise<void> {
     console.log(chalk.green('Done!'));
     console.log('');
     console.log(chalk.bold(`  ${resp.url}`));
-    console.log(`  Version:  v${resp.version}`);
-    console.log(`  Tier:     ${resp.tier}`);
+    console.log(`  Version: v${resp.version}`);
+    console.log(`  Tier:    ${resp.tier}`);
 
     if (resp.migrations_applied.length > 0) {
       console.log(`  Migrations: ${resp.migrations_applied.join(', ')}`);
@@ -232,7 +238,7 @@ export async function workerDeploy(): Promise<void> {
       console.log(chalk.gray(`  Free tier: ${resp.limits.requests_month.toLocaleString()} requests/month`));
     }
     if (resp.usage && resp.usage.requests_limit > 0) {
-      console.log(chalk.gray(`  Usage: ${resp.usage.requests_used.toLocaleString()} / ${resp.usage.requests_limit.toLocaleString()} requests this month`));
+      console.log(chalk.gray(`  Usage: ${resp.usage.requests_used.toLocaleString()} / ${resp.usage.requests_limit.toLocaleString()} req/month`));
     }
     console.log('');
   } catch (e: any) {
@@ -300,7 +306,7 @@ export async function workerStatus(): Promise<void> {
 
 // ── destroy ───────────────────────────────────────────────────────────────────
 
-export async function workerDestroy(): Promise<void> {
+export async function workerDestroy(opts: { confirm?: boolean }): Promise<void> {
   const auth = getAuthConfig();
   if (!auth) { console.log(chalk.red('Not logged in. Run: pinme login')); process.exit(1); }
 
@@ -310,9 +316,7 @@ export async function workerDestroy(): Promise<void> {
     process.exit(1);
   }
 
-  const hasConfirmFlag = process.argv.includes('--confirm');
-
-  if (!hasConfirmFlag) {
+  if (!opts.confirm) {
     console.log(chalk.yellow(`\nThis will permanently destroy "${projectData.project_id}" and all its data.\n`));
     const { yes } = await inquirer.prompt([
       { type: 'confirm', name: 'yes', message: 'Are you sure?', default: false },
@@ -325,7 +329,7 @@ export async function workerDestroy(): Promise<void> {
     await destroyWorker(projectData.project_id);
     deleteProjectData();
     console.log(chalk.green('Done!'));
-    console.log(chalk.gray('You are still logged in. Use "pinme worker deploy" to create a new project.\n'));
+    console.log(chalk.gray('You are still logged in. Run "pinme worker deploy" to create a new project.\n'));
   } catch (e: any) {
     console.log(chalk.red(`\nFailed: ${e.message}`));
     process.exit(1);
@@ -367,19 +371,18 @@ export async function workerLogs(): Promise<void> {
 
     console.log(chalk.green('Connected. Press Ctrl+C to stop.\n'));
 
+    const reader = resp.body.getReader();
+
     process.on('SIGINT', () => {
       reader.cancel();
       console.log('\nDisconnected.');
       process.exit(0);
     });
 
-    const reader = resp.body.getReader();
     const decoder = new TextDecoder();
-
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-
       const text = decoder.decode(value);
       for (const line of text.split('\n')) {
         if (!line.startsWith('data: ')) continue;
@@ -410,7 +413,7 @@ export async function workerLogs(): Promise<void> {
 
 // ── dev ───────────────────────────────────────────────────────────────────────
 
-export async function workerDev(): Promise<void> {
+export async function workerDev(opts: { port?: string }): Promise<void> {
   let config;
   try {
     config = readWorkerConfig();
@@ -419,12 +422,9 @@ export async function workerDev(): Promise<void> {
     process.exit(1);
   }
 
-  const portIdx = process.argv.indexOf('--port');
-  const port = portIdx !== -1 ? parseInt(process.argv[portIdx + 1], 10) : 8787;
-
+  const port = opts.port ? parseInt(opts.port, 10) : 8787;
   const cwd = process.cwd();
 
-  // Write temporary wrangler.toml
   const devDir = path.join(cwd, '.pinme');
   fs.mkdirpSync(devDir);
 
@@ -438,9 +438,7 @@ export async function workerDev(): Promise<void> {
 
   if (config.vars) {
     lines.push('[vars]');
-    for (const [k, v] of Object.entries(config.vars)) {
-      lines.push(`${k} = "${v}"`);
-    }
+    for (const [k, v] of Object.entries(config.vars)) lines.push(`${k} = "${v}"`);
     lines.push('');
   }
 
@@ -455,20 +453,16 @@ export async function workerDev(): Promise<void> {
   const wranglerDevToml = path.join(devDir, 'wrangler.dev.toml');
   fs.writeFileSync(wranglerDevToml, lines.join('\n'));
 
-  // Write .dev.vars from .env
   const envPath = path.join(cwd, '.env');
-  if (fs.existsSync(envPath)) {
-    fs.copyFileSync(envPath, path.join(cwd, '.dev.vars'));
-  }
+  if (fs.existsSync(envPath)) fs.copyFileSync(envPath, path.join(cwd, '.dev.vars'));
 
   console.log(chalk.green(`Starting dev server on http://localhost:${port}`));
   console.log(chalk.gray('Press Ctrl+C to stop\n'));
 
-  // Try local wrangler first, then npx
   const localWrangler = path.join(cwd, 'node_modules', '.bin', 'wrangler');
   const useNpx = !fs.existsSync(localWrangler);
-
   const args = ['wrangler', 'dev', '--config', wranglerDevToml, '--port', String(port), '--local'];
+
   const proc = useNpx
     ? spawn('npx', args, { stdio: 'inherit', cwd, env: process.env })
     : spawn(localWrangler, args.slice(1), { stdio: 'inherit', cwd, env: process.env });
@@ -488,4 +482,161 @@ export async function workerDev(): Promise<void> {
 
   process.on('SIGINT', () => proc.kill('SIGINT'));
   process.on('SIGTERM', () => proc.kill('SIGTERM'));
+}
+
+// ── list (worker projects) ────────────────────────────────────────────────────
+
+function fmtBytes(bytes: number): string {
+  if (bytes === 0) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export async function workerList(): Promise<void> {
+  const auth = getAuthConfig();
+  if (!auth) { console.log(chalk.red('Not logged in. Run: pinme login')); process.exit(1); }
+
+  try {
+    const { projects } = await listWorkerProjects();
+
+    if (projects.length === 0) {
+      console.log(chalk.gray('No worker projects found. Run: pinme worker deploy'));
+      return;
+    }
+
+    console.log(chalk.green(`${projects.length} project${projects.length !== 1 ? 's' : ''}`));
+    console.log('');
+
+    for (const p of projects) {
+      const limit = p.usage.requests_limit;
+      const used = p.usage.requests_month;
+      const usageStr = limit > 0
+        ? `${used.toLocaleString()} / ${limit.toLocaleString()} requests`
+        : `${used.toLocaleString()} requests (unlimited)`;
+
+      console.log(`  ${chalk.bold(p.project_id)}`);
+      console.log(`    URL:    ${p.url}`);
+      console.log(`    Tier:   ${p.tier}`);
+      console.log(`    Usage:  ${usageStr}`);
+      console.log(`    Size:   Worker ${fmtBytes(p.resources.worker_size_bytes)}  DB ${fmtBytes(p.resources.db_size_bytes)}`);
+      if (p.last_deployed) {
+        console.log(`    Deployed: ${new Date(p.last_deployed).toLocaleDateString()}`);
+      }
+      console.log('');
+    }
+
+    console.log(chalk.gray('Dashboard: https://pinme.pro/dashboard'));
+  } catch (e: any) {
+    console.log(chalk.red(`Error: ${e.message}`));
+    process.exit(1);
+  }
+}
+
+// ── secret ────────────────────────────────────────────────────────────────────
+
+function requireProjectForSecret(): { projectId: string } {
+  const auth = getAuthConfig();
+  if (!auth) { console.log(chalk.red('Not logged in. Run: pinme login')); process.exit(1); }
+  const projectData = readProjectData();
+  if (!projectData) {
+    console.log(chalk.red('No project found in current directory. Run: pinme worker deploy'));
+    process.exit(1);
+  }
+  return { projectId: projectData.project_id };
+}
+
+export async function workerSecretSet(key: string, value: string | undefined): Promise<void> {
+  const { projectId } = requireProjectForSecret();
+
+  if (!value) {
+    const ans = await inquirer.prompt([
+      { type: 'password', name: 'value', message: `${key}:`, mask: '*' },
+    ]);
+    value = ans.value;
+  }
+
+  if (!value) {
+    console.log(chalk.red('Secret value cannot be empty.'));
+    process.exit(1);
+  }
+
+  try {
+    const result = await setWorkerSecrets(projectId, { [key]: value });
+    console.log(chalk.green(`Secret "${key}" set (${result.total}/${result.limit} used)`));
+  } catch (e: any) {
+    console.log(chalk.red(`Failed: ${e.message}`));
+    process.exit(1);
+  }
+}
+
+export async function workerSecretList(): Promise<void> {
+  const { projectId } = requireProjectForSecret();
+  try {
+    const status = await getWorkerStatus(projectId);
+    const names = status.resources.secret_names;
+    if (names.length === 0) {
+      console.log(chalk.gray('No secrets set.'));
+    } else {
+      for (const name of names) console.log(`  ${name}`);
+    }
+  } catch (e: any) {
+    console.log(chalk.red(`Failed: ${e.message}`));
+    process.exit(1);
+  }
+}
+
+export async function workerSecretDelete(key: string): Promise<void> {
+  const { projectId } = requireProjectForSecret();
+  try {
+    const result = await deleteWorkerSecret(projectId, key);
+    console.log(chalk.green(`Secret "${result.deleted}" deleted (${result.remaining} remaining)`));
+  } catch (e: any) {
+    console.log(chalk.red(`Failed: ${e.message}`));
+    process.exit(1);
+  }
+}
+
+export async function workerSecretImport(file: string): Promise<void> {
+  const { projectId } = requireProjectForSecret();
+
+  if (!fs.existsSync(file)) {
+    console.log(chalk.red(`File not found: ${file}`));
+    process.exit(1);
+  }
+
+  function parseEnvFile(content: string): Record<string, string> {
+    const result: Record<string, string> = {};
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq === -1) continue;
+      const k = trimmed.slice(0, eq).trim();
+      let v = trimmed.slice(eq + 1).trim();
+      if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+        v = v.slice(1, -1);
+      }
+      if (k) result[k] = v;
+    }
+    return result;
+  }
+
+  const secrets = parseEnvFile(fs.readFileSync(file, 'utf-8'));
+  const count = Object.keys(secrets).length;
+
+  if (count === 0) {
+    console.log(chalk.yellow('No KEY=VALUE pairs found in file.'));
+    return;
+  }
+
+  process.stdout.write(chalk.cyan(`Importing ${count} secret${count > 1 ? 's' : ''}... `));
+
+  try {
+    const result = await setWorkerSecrets(projectId, secrets);
+    console.log(chalk.green(`${result.set.length} imported`));
+  } catch (e: any) {
+    console.log(chalk.red(`\nFailed: ${e.message}`));
+    process.exit(1);
+  }
 }

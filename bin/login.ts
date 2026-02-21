@@ -10,7 +10,7 @@ import inquirer from 'inquirer';
 import { getAuthConfig, setAuthTokenDirect } from './utils/auth';
 import { sendEmailCode, verifyEmailCode } from './utils/worker-api';
 
-export default async function loginCmd(): Promise<void> {
+export default async function loginCmd(opts: { email?: string } = {}): Promise<void> {
   // Check if already logged in
   const existing = getAuthConfig();
   if (existing) {
@@ -27,8 +27,7 @@ export default async function loginCmd(): Promise<void> {
   }
 
   // Get email
-  const argEmail = process.argv[3];
-  let email: string = argEmail?.startsWith('--') ? '' : (argEmail ?? '');
+  let email: string = opts.email ?? '';
 
   if (!email) {
     const ans = await inquirer.prompt([

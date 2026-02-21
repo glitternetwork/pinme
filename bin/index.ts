@@ -21,10 +21,20 @@ import showAppKeyCmd from './show-appkey';
 import myDomainsCmd from './my-domains';
 import bindCmd from './bind';
 import loginCmd from './login';
-import { workerInit, workerDeploy, workerStatus, workerDestroy, workerLogs, workerDev } from './worker';
+import {
+  workerInit,
+  workerDeploy,
+  workerStatus,
+  workerDestroy,
+  workerLogs,
+  workerDev,
+  workerList,
+  workerSecretSet,
+  workerSecretList,
+  workerSecretDelete,
+  workerSecretImport,
+} from './worker';
 import { dbMigrate, dbMigrateCreate, dbQuery } from './db';
-import { secretSet, secretList, secretDelete, secretImport } from './secret';
-import projectsCmd from './projects';
 import whoamiCmd from './whoami';
 
 // display the ASCII art logo
@@ -110,7 +120,7 @@ program
   .command('login')
   .description('Log in with your email (sends a verification code)')
   .option('--email <email>', 'Email address (skips the prompt)')
-  .action(() => loginCmd());
+  .action((opts: { email?: string }) => loginCmd(opts));
 
 program
   .command('whoami')
@@ -127,14 +137,14 @@ workerCmd
   .command('init [name]')
   .description('Initialize a new worker project')
   .option('--template <name>', 'Template: blank (default) or rest-api')
-  .action(() => workerInit());
+  .action((name: string | undefined, opts: { template?: string }) => workerInit(name, opts));
 
 workerCmd
   .command('deploy')
   .description('Build and deploy the worker in the current directory')
   .option('--message <msg>', 'Deploy message')
   .option('--dry-run', 'Preview without deploying')
-  .action(() => workerDeploy());
+  .action((opts: { message?: string; dryRun?: boolean }) => workerDeploy(opts));
 
 workerCmd
   .command('status')
@@ -145,7 +155,7 @@ workerCmd
   .command('destroy')
   .description('Permanently destroy the worker and its database')
   .option('--confirm', 'Skip confirmation prompt')
-  .action(() => workerDestroy());
+  .action((opts: { confirm?: boolean }) => workerDestroy(opts));
 
 workerCmd
   .command('logs')
@@ -156,63 +166,63 @@ workerCmd
   .command('dev')
   .description('Start local development server (requires wrangler)')
   .option('--port <number>', 'Port to listen on (default 8787)')
-  .action(() => workerDev());
+  .action((opts: { port?: string }) => workerDev(opts));
+
+workerCmd
+  .command('list')
+  .description('List all your worker projects')
+  .action(() => workerList());
+
+// ── Worker secrets ────────────────────────────────────────────────────────────
+
+const workerSecretCmd = workerCmd
+  .command('secret')
+  .description('Manage worker secrets (environment variables)');
+
+workerSecretCmd
+  .command('set <key> [value]')
+  .description('Set a secret (prompts for value if not provided)')
+  .action((key: string, value: string | undefined) => workerSecretSet(key, value));
+
+workerSecretCmd
+  .command('list')
+  .description('List secret names (values are never shown)')
+  .action(() => workerSecretList());
+
+workerSecretCmd
+  .command('delete <key>')
+  .description('Delete a secret')
+  .action((key: string) => workerSecretDelete(key));
+
+workerSecretCmd
+  .command('import <file>')
+  .description('Import secrets from a .env file')
+  .action((file: string) => workerSecretImport(file));
 
 // ── Database ──────────────────────────────────────────────────────────────────
 
 const dbCmd = program
   .command('db')
-  .description('Manage the worker\'s D1 database');
+  .description("Manage the worker's D1 database");
 
 dbCmd
   .command('migrate')
   .description('Run pending SQL migrations against the remote database')
   .option('--dry-run', 'Show pending migrations without applying')
-  .action(() => dbMigrate());
+  .action((opts: { dryRun?: boolean }) => dbMigrate(opts));
 
 dbCmd
   .command('migrate:create <name>')
   .description('Create a new migration file in the migrations directory')
-  .action(() => dbMigrateCreate());
+  .action((name: string) => dbMigrateCreate(name));
 
 dbCmd
   .command('query <sql>')
   .description('Execute a SQL query on the remote database')
   .option('--json', 'Output results as JSON')
-  .action(() => dbQuery());
+  .action((sql: string, opts: { json?: boolean }) => dbQuery(sql, opts));
 
-// ── Secrets ───────────────────────────────────────────────────────────────────
-
-const secretCmd = program
-  .command('secret')
-  .description('Manage worker secrets (environment variables)');
-
-secretCmd
-  .command('set <key> [value]')
-  .description('Set a secret (prompts for value if not provided)')
-  .action(() => secretSet());
-
-secretCmd
-  .command('list')
-  .description('List secret names (values are never shown)')
-  .action(() => secretList());
-
-secretCmd
-  .command('delete <key>')
-  .description('Delete a secret')
-  .action(() => secretDelete());
-
-secretCmd
-  .command('import <file>')
-  .description('Import secrets from a .env file')
-  .action(() => secretImport());
-
-// ── Projects ──────────────────────────────────────────────────────────────────
-
-program
-  .command('projects')
-  .description('List all your worker projects')
-  .action(() => projectsCmd());
+// ── IPFS history ──────────────────────────────────────────────────────────────
 
 program
   .command('list')
@@ -285,10 +295,13 @@ program.on('--help', () => {
   console.log('  $ pinme worker logs');
   console.log('  $ pinme worker dev');
   console.log('  $ pinme worker destroy');
+  console.log('  $ pinme worker list');
+  console.log('  $ pinme worker secret set API_KEY');
+  console.log('  $ pinme worker secret list');
+  console.log('  $ pinme worker secret delete API_KEY');
+  console.log('  $ pinme worker secret import .env');
   console.log('  $ pinme db migrate');
   console.log('  $ pinme db query "SELECT * FROM items"');
-  console.log('  $ pinme secret set API_KEY');
-  console.log('  $ pinme projects');
   console.log('');
   console.log(
     'For more information, visit: https://github.com/glitternetwork/pinme',
