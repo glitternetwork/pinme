@@ -180,17 +180,23 @@ export default async (options?: UploadOptions): Promise<void> => {
       }),
     );
 
-    // Check auth
-    const authConfig = getAuthConfig();
-    if (!authConfig) {
-      console.log(chalk.red('Please login first. Run: pinme set-appkey <AppKey>'));
-      return;
+    // Check if domain/dns options are provided
+    const domainArg = getDomainFromArgs();
+    const dnsArg = getDnsFromArgs();
+    const needsAuth = !!domainArg || dnsArg;
+
+    // Check auth only when domain/dns options are provided
+    let authConfig: { address: string; token: string } | null = null;
+    if (needsAuth) {
+      authConfig = getAuthConfig();
+      if (!authConfig) {
+        console.log(chalk.red('Please login first. Run: pinme set-appkey <AppKey>'));
+        return;
+      }
     }
 
     // if the parameter is passed, upload directly, pinme upload /path/to/dir
     const argPath = process.argv[3];
-    const domainArg = getDomainFromArgs();
-    const dnsArg = getDnsFromArgs();
 
     if (argPath && !argPath.startsWith('-')) {
       // use the synchronous path check function
