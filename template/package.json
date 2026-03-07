@@ -1,0 +1,23 @@
+{
+  "name": "pinme-template",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev:frontend",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "npm run build:frontend",
+    "build:frontend": "cd frontend && npm run build",
+    "deploy": "npm run deploy:backend && npm run deploy:frontend",
+    "deploy:backend": "cd backend && npx wrangler deploy",
+    "deploy:frontend": "pinme upload frontend/dist/",
+    "db:migrate": "cd backend && pinme db migrate"
+  },
+  "devDependencies": {
+    "pinme": "latest"
+  }
+}

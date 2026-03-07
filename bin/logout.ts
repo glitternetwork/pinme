@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { clearAuthToken, getAuthConfig } from './utils/auth';
+import { clearAuthToken, getAuthConfig } from './utils/webLogin';
 
 export default async function logoutCmd(): Promise<void> {
   try {

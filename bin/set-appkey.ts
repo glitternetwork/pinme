@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { setAuthToken } from './utils/auth';
+import { setAuthToken } from './utils/webLogin';
 import { getDeviceId } from './utils/getDeviceId';
 import { bindAnonymousDevice } from './utils/pinmeApi';
 

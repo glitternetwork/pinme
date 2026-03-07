@@ -1,0 +1,11 @@
+name = "pinme-template"
+compatibility_date = "2026-03-01"
+main = "src/worker.ts"
+
+[[d1_databases]]
+binding = "pinme_template_db"
+database_name = "pinme-template-db"
+database_id = "e75f6af9-73a1-490c-80b1-4cd77895b2b9"
+
+[vars]
+VITE_WORKER_URL = "https://vite-react-ts-{hash}.pinme.pro"

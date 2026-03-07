@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { getAuthConfig } from './utils/auth';
+import { getAuthConfig } from './utils/webLogin';
 
 export default function showAppKeyCmd(): void {
   try {
