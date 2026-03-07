@@ -124,12 +124,12 @@ This section provides AI-specific instructions for deploying websites using PinM
    - For React: use `HashRouter` instead of `BrowserRouter`
    - For Vue: use `createHashHistory()` instead of `createWebHistory()`
 
-5. **Execute Deployment Command**
+4. **Execute Deployment Command**
    ```bash
    pinme upload <folder_path>
    ```
 
-6. **Return Result**
+5. **Return Result**
    - Only return final preview page URL: `https://pinme.eth.limo/#/preview/*`
    - Do not output additional logs or intermediate steps
 
