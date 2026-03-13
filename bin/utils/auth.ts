@@ -59,6 +59,12 @@ export function getAuthConfig(): AuthConfig | null {
   }
 }
 
+/** Save address + token directly (e.g. from email OTP login). */
+export function setAuthTokenDirect(address: string, token: string): void {
+  ensureConfigDir();
+  fs.writeJsonSync(AUTH_FILE, { address, token }, { spaces: 2 });
+}
+
 export function getAuthHeaders(): Record<string, string> {
   const conf = getAuthConfig();
   if (!conf) {
