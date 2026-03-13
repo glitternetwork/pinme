@@ -1,6 +1,6 @@
 {
   "name": "pinme",
-  "version": "1.2.6",
+  "version": "2.0.0-beta.6",
   "publishConfig": {
     "access": "public"
   },
@@ -15,8 +15,7 @@
     "pinme": "./dist/index.js"
   },
   "files": [
-    "dist",
-    "template"
+    "dist"
   ],
   "keywords": [
     "ipfs",
@@ -38,6 +37,7 @@
     "ethers": "5.7.2",
     "figlet": "^1.7.0",
     "form-data": "^4.0.0",
+    "formdata-node": "^6.0.3",
     "fs-extra": "^11.2.0",
     "inquirer": "^8.2.5",
     "ora": "^3.2.0",

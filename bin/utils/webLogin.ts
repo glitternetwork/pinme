@@ -49,7 +49,7 @@ export interface LoginOptions {
 const DEFAULT_OPTIONS: Required<LoginOptions> = {
   apiBaseUrl: process.env.PINME_API_BASE || 'http://ipfs-proxy.opena.chat/api/v4',
   webBaseUrl: process.env.PINME_WEB_URL || 'http://localhost:5173',
-  callbackPort: 3000,
+  callbackPort: 34567,
   callbackPath: '/cli/callback',
 };
 
@@ -244,72 +244,140 @@ export class WebLoginManager {
 <head>
   <title>Login Success - PinMe</title>
   <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      margin: 0;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      background: #000;
+      overflow: hidden;
+    }
+    .bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(ellipse at 20% 80%, rgba(120, 0, 255, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(0, 200, 255, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(255, 0, 150, 0.15) 0%, transparent 60%);
+      animation: bgPulse 6s ease-in-out infinite;
+    }
+    @keyframes bgPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.05); }
+    }
+    .grid {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 200%;
+      height: 200%;
+      background-image: 
+        linear-gradient(rgba(0, 200, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 200, 255, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      transform: perspective(500px) rotateX(60deg) translateY(-50%) translateZ(-200px);
+      animation: gridMove 20s linear infinite;
+    }
+    @keyframes gridMove {
+      0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); }
+      100% { transform: perspective(500px) rotateX(60deg) translateY(50px) translateZ(-200px); }
     }
     .container {
-      background: white;
-      padding: 3rem;
-      border-radius: 12px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      position: relative;
+      z-index: 10;
+      background: linear-gradient(135deg, rgba(20, 20, 40, 0.9) 0%, rgba(10, 10, 30, 0.95) 100%);
+      padding: 3.5rem 4rem;
+      border-radius: 32px;
+      box-shadow: 
+        0 0 60px rgba(0, 200, 255, 0.15),
+        0 25px 50px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 0 rgba(0, 200, 255, 0.1);
       text-align: center;
-      max-width: 400px;
+      border: 1px solid rgba(0, 200, 255, 0.2);
+      max-width: 440px;
+      backdrop-filter: blur(30px);
+    }
+    .container::before {
+      content: '';
+      position: absolute;
+      top: -1px;
+      left: -1px;
+      right: -1px;
+      bottom: -1px;
+      border-radius: 32px;
+      background: linear-gradient(135deg, rgba(0, 200, 255, 0.5), rgba(255, 0, 150, 0.5), rgba(120, 0, 255, 0.5));
+      z-index: -1;
+      opacity: 0.5;
+      animation: borderGlow 3s ease-in-out infinite;
+    }
+    @keyframes borderGlow {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.7; }
     }
     .success-icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
+      font-size: 5rem;
+      margin-bottom: 1.5rem;
+      animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      filter: drop-shadow(0 0 20px rgba(0, 200, 255, 0.5));
+    }
+    @keyframes bounceIn {
+      0% { transform: scale(0); opacity: 0; }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); opacity: 1; }
     }
     h1 {
-      color: #1f2937;
-      margin: 0 0 1rem 0;
+      color: #fff;
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin: 0 0 0.75rem 0;
+      background: linear-gradient(90deg, #fff, #00d4ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
     p {
-      color: #6b7280;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 1.1rem;
       margin: 0 0 2rem 0;
+      line-height: 1.6;
     }
-    .close-btn {
-      background: #3b82f6;
-      color: white;
-      border: none;
-      padding: 0.75rem 2rem;
-      border-radius: 6px;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.2s;
+    .highlight { color: #00d4ff; font-weight: 600; }
+    .sparkle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: #00d4ff;
+      border-radius: 50%;
+      animation: sparkle 2s ease-in-out infinite;
     }
-    .close-btn:hover {
-      background: #2563eb;
+    .sparkle:nth-child(1) { top: 20%; left: 10%; animation-delay: 0s; }
+    .sparkle:nth-child(2) { top: 30%; right: 15%; animation-delay: 0.5s; }
+    .sparkle:nth-child(3) { bottom: 25%; left: 20%; animation-delay: 1s; }
+    .sparkle:nth-child(4) { bottom: 35%; right: 10%; animation-delay: 1.5s; }
+    @keyframes sparkle {
+      0%, 100% { opacity: 0; transform: scale(0); }
+      50% { opacity: 1; transform: scale(1); }
     }
   </style>
 </head>
 <body>
+  <div class="bg"></div>
+  <div class="grid"></div>
   <div class="container">
-    <div class="success-icon">✅</div>
-    <h1>Login Successful!</h1>
-    <p>You have successfully logged in to PinMe CLI.</p>
-    <p>You can close this window and return to the command line.</p>
-    <button id="closeBtn" class="close-btn">Close Window</button>
-    <p id="message" style="color: #6b7280; margin-top: 1rem;"></p>
+    <div class="sparkle"></div>
+    <div class="sparkle"></div>
+    <div class="sparkle"></div>
+    <div class="sparkle"></div>
+    <div class="success-icon">🎉</div>
+    <h1>Welcome to PinMe</h1>
+    <p>You are now logged in! <span class="highlight">🚀</span><br>Return to your terminal to continue.</p>
   </div>
-  <script>
-    // For redirected pages, show message instead of auto-close
-    document.addEventListener('DOMContentLoaded', function() {
-      document.getElementById('closeBtn').addEventListener('click', function() {
-        // Try to close, fallback to showing message
-        try {
-          window.close();
-        } catch (e) {
-          document.getElementById('message').textContent = 'You can close this window manually.';
-        }
-      });
-    });
-  </script>
 </body>
 </html>`;
   }
@@ -322,17 +390,125 @@ export class WebLoginManager {
 <head>
   <title>Login Failed - PinMe</title>
   <style>
-    body { font-family: sans-serif; padding: 2rem; text-align: center; background: #f3f4f6; }
-    .container { background: white; padding: 2rem; border-radius: 12px; max-width: 400px; margin: 0 auto; }
-    .error { color: #dc2626; font-size: 1.25rem; margin: 1rem 0; }
-    button { padding: 0.5rem 1rem; cursor: pointer; background: #3b82f6; color: white; border: none; border-radius: 6px; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #000;
+      overflow: hidden;
+    }
+    .bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(ellipse at 20% 80%, rgba(255, 50, 50, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(255, 100, 50, 0.2) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(100, 0, 50, 0.15) 0%, transparent 60%);
+      animation: bgPulse 6s ease-in-out infinite;
+    }
+    @keyframes bgPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.05); }
+    }
+    .grid {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 200%;
+      height: 200%;
+      background-image: 
+        linear-gradient(rgba(255, 80, 80, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 80, 80, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      transform: perspective(500px) rotateX(60deg) translateY(-50%) translateZ(-200px);
+      animation: gridMove 20s linear infinite;
+    }
+    @keyframes gridMove {
+      0% { transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px); }
+      100% { transform: perspective(500px) rotateX(60deg) translateY(50px) translateZ(-200px); }
+    }
+    .container {
+      position: relative;
+      z-index: 10;
+      background: linear-gradient(135deg, rgba(40, 20, 20, 0.9) 0%, rgba(30, 10, 10, 0.95) 100%);
+      padding: 3.5rem 4rem;
+      border-radius: 32px;
+      box-shadow: 
+        0 0 60px rgba(255, 50, 50, 0.15),
+        0 25px 50px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 0 rgba(255, 50, 50, 0.1);
+      text-align: center;
+      border: 1px solid rgba(255, 50, 50, 0.2);
+      max-width: 440px;
+      backdrop-filter: blur(30px);
+    }
+    .container::before {
+      content: '';
+      position: absolute;
+      top: -1px;
+      left: -1px;
+      right: -1px;
+      bottom: -1px;
+      border-radius: 32px;
+      background: linear-gradient(135deg, rgba(255, 50, 50, 0.5), rgba(255, 150, 50, 0.5), rgba(150, 0, 50, 0.5));
+      z-index: -1;
+      opacity: 0.5;
+      animation: borderGlow 3s ease-in-out infinite;
+    }
+    @keyframes borderGlow {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.7; }
+    }
+    .error-icon {
+      font-size: 5rem;
+      margin-bottom: 1.5rem;
+      animation: shake 0.5s ease-in-out;
+      filter: drop-shadow(0 0 20px rgba(255, 50, 50, 0.5));
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-10px) rotate(-5deg); }
+      40% { transform: translateX(10px) rotate(5deg); }
+      60% { transform: translateX(-10px) rotate(-5deg); }
+      80% { transform: translateX(10px) rotate(5deg); }
+    }
+    h1 {
+      color: #fff;
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin: 0 0 0.75rem 0;
+      background: linear-gradient(90deg, #fff, #ff5050);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .error {
+      color: #ff6b6b;
+      font-size: 1rem;
+      margin: 0 0 2rem 0;
+      padding: 1.25rem;
+      background: rgba(255, 50, 50, 0.1);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 50, 50, 0.2);
+      font-weight: 500;
+      box-shadow: 0 0 20px rgba(255, 50, 50, 0.1);
+    }
   </style>
 </head>
 <body>
+  <div class="bg"></div>
+  <div class="grid"></div>
   <div class="container">
-    <h2>Login Failed</h2>
+    <div class="error-icon">😵</div>
+    <h1>Oops!</h1>
     <div class="error">${error}</div>
-    <button onclick="window.close()">Close</button>
   </div>
 </body>
 </html>`;

@@ -25,6 +25,8 @@ import createCmd from './create';
 import saveCmd from './save';
 import updateDbCmd from './updateDb';
 import updateWorkerCmd from './updateWorker';
+import updateWebCmd from './updateWeb';
+import deleteCmd from './delete';
 
 interface SaveOptions {
   name?: string;
@@ -111,13 +113,13 @@ program
 program
   .command('create')
   .description('Create a new project from template')
-  .option('-n, --name <name>', 'Project name')
-  .action((options: { name?: string; force?: boolean }) => createCmd(options));
+  .argument('[name]', 'Project name')
+  .option('-f, --force', 'Overwrite if exists')
+  .action((name: string | undefined, options: { force?: boolean }) => createCmd({ name, force: options?.force }));
 
 program
   .command('save')
   .description('Deploy the project (frontend + backend)')
-  .option('-n, --name <name>', 'Project name', 'template')
   .action((options: { name?: string }) => saveCmd(options));
 
 program
@@ -129,6 +131,18 @@ program
   .command('update-worker')
   .description('Execute worker migration')
   .action(() => updateWorkerCmd());
+
+program
+  .command('update-web')
+  .description('Deploy frontend to IPFS')
+  .action((options: { name?: string }) => updateWebCmd(options));
+
+program
+  .command('delete')
+  .description('Delete a project (Worker, domain, D1 database)')
+  .argument('[name]', 'Project name')
+  .option('-f, --force', 'Skip confirmation')
+  .action((name: string | undefined, options: { force?: boolean }) => deleteCmd({ name, force: options?.force }));
 
 program
   .command('domain')

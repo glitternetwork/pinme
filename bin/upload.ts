@@ -281,7 +281,7 @@ export default async (options?: UploadOptions): Promise<void> => {
               await bindDomain(domainArg, result.contentHash, isDns, authConfig);
             } catch (e: any) {
               if (e.message === 'Token expired') {
-                return;
+                process.exit(1);
               }
               throw e;
             }
@@ -290,6 +290,7 @@ export default async (options?: UploadOptions): Promise<void> => {
         }
       } catch (error: any) {
         console.error(chalk.red(`Error: ${error.message}`));
+        process.exit(1);
       }
       process.exit(0);
     }
@@ -384,7 +385,7 @@ export default async (options?: UploadOptions): Promise<void> => {
               await bindDomain(domainArg, result.contentHash, isDns, authConfig);
             } catch (e: any) {
               if (e.message === 'Token expired') {
-                return;
+                process.exit(1);
               }
               throw e;
             }
@@ -393,6 +394,7 @@ export default async (options?: UploadOptions): Promise<void> => {
         }
       } catch (error: any) {
         console.error(chalk.red(`Error: ${error.message}`));
+        process.exit(1);
       }
       process.exit(0);
     }
