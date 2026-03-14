@@ -80,7 +80,7 @@ function showBindHelp(): void {
 
   console.log("DNS SETUP:");
   console.log("  After successful DNS binding, visit:");
-  console.log("  https://pinme.eth.limo/#/docs?id=custom-domain");
+  console.log("  https://pinme.dev/#/docs?id=custom-domain");
   console.log("  for DNS configuration guide.\n");
 }
 
@@ -151,7 +151,7 @@ function showLoginHelp(): void {
 
   console.log("NOTE:");
   console.log("  - If you prefer manual input, use: pinme set-appkey <AppKey>");
-  console.log("  - Get your AppKey from: https://pinme.eth.limo/\n");
+  console.log("  - Get your AppKey from: https://pinme.dev/\n");
 }
 
 // list command help

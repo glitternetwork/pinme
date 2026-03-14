@@ -10,8 +10,9 @@ import { getAuthHeaders } from './utils/webLogin';
 const PROJECT_DIR = process.cwd();
 const API_BASE = process.env.PINME_API_BASE || 'https://pinme.benny1996.win/api/v4';
 
-// 模板仓库地址 (使用 HTTPS，无需 SSH/git)
-const TEMPLATE_REPO = 'https://github.com/glitternetwork/pinme-worker-template.git';
+// 模板仓库地址 (使用 HTTPS 下载 zip)
+const TEMPLATE_REPO = 'glitternetwork/pinme-worker-template';
+const TEMPLATE_ZIP_URL = `https://github.com/${TEMPLATE_REPO}/archive/refs/heads/main.zip`;
 
 interface CreateOptions {
   name?: string;
@@ -125,22 +126,57 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       throw new Error(errorMsg);
     }
 
-    // 2. Clone template from git repository
-    console.log(chalk.blue('\n2. Cloning template from repository...'));
+    // 2. Download template from repository (using HTTPS, no git required)
+    console.log(chalk.blue('\n2. Downloading template from repository...'));
+    const zipPath = path.join(PROJECT_DIR, 'template.zip');
+    let downloadSuccess = false;
+    
+    // Retry download up to 3 times
+    for (let attempt = 1; attempt <= 3 && !downloadSuccess; attempt++) {
+      try {
+        console.log(chalk.gray(`   Download attempt ${attempt}/3...`));
+        
+        // Download zip file
+        execSync(`curl -L --retry 3 --retry-delay 2 -o "${zipPath}" "${TEMPLATE_ZIP_URL}"`, {
+          stdio: 'inherit',
+        });
+        
+        // Check if file was downloaded successfully
+        if (!fs.existsSync(zipPath) || fs.statSync(zipPath).size < 100) {
+          throw new Error('Downloaded file is too small or empty');
+        }
+        
+        downloadSuccess = true;
+      } catch (downloadError: any) {
+        console.log(chalk.yellow(`   Attempt ${attempt} failed: ${downloadError.message}`));
+        if (fs.existsSync(zipPath)) {
+          fs.removeSync(zipPath);
+        }
+        if (attempt === 3) {
+          throw new Error(`Failed to download template after 3 attempts: ${downloadError.message}`);
+        }
+      }
+    }
+    
     try {
-      execSync(`git clone --depth 1 ${TEMPLATE_REPO} ${targetDir}`, {
+      // Unzip to target directory
+      execSync(`unzip -o "${zipPath}" -d "${PROJECT_DIR}"`, {
         stdio: 'inherit',
       });
-      console.log(chalk.green(`   Template cloned to: ${targetDir}`));
       
-      // Remove .git directory to detach from template repository
-      const gitDir = path.join(targetDir, '.git');
-      if (fs.existsSync(gitDir)) {
-        fs.removeSync(gitDir);
-        console.log(chalk.gray('   .git directory removed'));
+      // Move files from subdirectory to target directory
+      const subDir = path.join(PROJECT_DIR, 'pinme-worker-template-main');
+      if (fs.existsSync(subDir)) {
+        fs.copySync(subDir, targetDir);
+        fs.removeSync(subDir);
       }
+      
+      // Clean up zip file
+      fs.removeSync(zipPath);
+      
+      console.log(chalk.green(`   Template downloaded to: ${targetDir}`));
     } catch (error: any) {
-      throw new Error(`Failed to clone template: ${error.message}`);
+      throw new Error(`Failed to extract template: ${error.message}`);
     }
 
     // 3. Update pinme.toml with worker URL
@@ -153,34 +189,6 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       /project_name = ".*"/,
       `project_name = "${workerData.project_name}"`
     );
-    // Update VITE_WORKER_URL - match entire line
-    updatedConfig = updatedConfig.replace(
-      /^VITE_WORKER_URL = ".*"$/m,
-      `VITE_WORKER_URL = "${workerData.api_domain}"`
-    );
-    // Add D1 database UUID
-    updatedConfig = updatedConfig.replace(
-      /# database_id = ".*"/,
-      `database_id = "${workerData.uuid}"`
-    );
-    // Add API Key
-    if (workerData.api_key) {
-      console.log(chalk.gray(`   API Key: ${workerData.api_key.slice(0, 8)}...`));
-      // Try to replace commented version first
-      updatedConfig = updatedConfig.replace(
-        /^# api_key = ".*"$/m,
-        `api_key = "${workerData.api_key}"`
-      );
-      // If not found, try to replace uncommented version
-      if (!updatedConfig.includes(`api_key = "${workerData.api_key}"`)) {
-        updatedConfig = updatedConfig.replace(
-          /^api_key = ".*"$/m,
-          `api_key = "${workerData.api_key}"`
-        );
-      }
-    } else {
-      console.log(chalk.yellow('   Warning: No API Key returned from API'));
-    }
 
     fs.writeFileSync(configPath, updatedConfig);
     console.log(chalk.green(`   Updated pinme.toml`));
@@ -205,8 +213,8 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
     if (fs.existsSync(wranglerPath) && workerData.api_key) {
       let wranglerContent = fs.readFileSync(wranglerPath, 'utf-8');
       wranglerContent = wranglerContent.replace(
-        /^API_KEY = ".*"$/m,
-        `API_KEY = "${workerData.api_key}"`
+        /^name = ".*"$/m,
+        `name = "${workerData.project_name}"`
       );
       fs.writeFileSync(wranglerPath, wranglerContent);
       console.log(chalk.green(`   Updated backend/wrangler.toml API_KEY`));
@@ -220,20 +228,10 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       let envContent = fs.readFileSync(envExamplePath, 'utf-8');
       // Replace your-project with actual project name
       envContent = envContent.replace(/your-project/g, workerData.project_name);
-      // Update API domain (VITE_WORKER_URL) - match entire line
-      envContent = envContent.replace(
-        /^VITE_WORKER_URL=.*$/m,
-        `VITE_WORKER_URL=${workerData.api_domain}`
-      );
       // Update API_URL - match entire line
       envContent = envContent.replace(
         /^VITE_API_URL=.*$/m,
         `VITE_API_URL=${workerData.api_domain}`
-      );
-       // Update API_URL - match entire line
-      envContent = envContent.replace(
-        /^VITE_API_URL=.*$/m,
-        `VITE_API_KEY=${workerData.api_key}`
       );
       fs.writeFileSync(envPath, envContent);
       console.log(chalk.green(`   Created frontend/.env file`));
