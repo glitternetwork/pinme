@@ -1,7 +1,7 @@
 # PinMe — llms.txt
 Last updated: 2026-01-26
 Canonical repo: https://github.com/glitternetwork/pinme
-Website: https://pinme.dev/
+Website: https://pinme.eth.limo/
 
 ## Purpose
 PinMe is a zero-config frontend deployment tool: no servers, no accounts, no setup.
@@ -48,7 +48,7 @@ Prerequisite: Node.js >= 16.13.0
    # or: pinme upload public
 
 Result: PinMe prints a preview URL in the format:
-- https://pinme.dev/#/preview/*
+- https://pinme.eth.limo/#/preview/*
 
 ## AI Assistant Execution Protocol (strict)
 Goal: Upload static files to PinMe and return ONLY the final preview URL.
@@ -86,7 +86,7 @@ If no suitable folder is found:
 
 5) Return result:
 - Return ONLY the final preview URL:
-  https://pinme.dev/#/preview/*
+  https://pinme.eth.limo/#/preview/*
 - Do NOT include logs or intermediate steps.
 
 ### Prohibited operations
@@ -112,7 +112,7 @@ If no suitable folder is found:
     "total_directory": "1GB"
   },
   "output": "preview_url",
-  "preview_url_format": "https://pinme.dev/#/preview/*",
+  "preview_url_format": "https://pinme.eth.limo/#/preview/*",
   "fixed_domain_format": "https://*.pinit.eth.limo",
   "other_commands": {
     "version": "pinme --version",
@@ -156,4 +156,4 @@ Steps:
 3) npm install && npm run build
 4) Identify output folder (dist/build/out/public) containing index.html
 5) pinme upload <folder>
-6) Return ONLY the preview URL: https://pinme.dev/#/preview/*
+6) Return ONLY the preview URL: https://pinme.eth.limo/#/preview/*

@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://pinme.dev/">
+  <a href="https://pinme.eth.limo/">
     <img src="https://2egc5b44.pinit.eth.limo/" height="92">
     <h3 align="center">PinMe</h3>
   </a>
@@ -13,7 +13,7 @@
 
 # PinMe
 
-[PinMe](https://pinme.dev/) is a zero-config frontend deployment tool.
+[PinMe](https://pinme.eth.limo/) is a zero-config frontend deployment tool.
 No servers. No accounts. No setup.
 
 Build a static site, generate a page with AI, export your frontend, or import CAR files — then deploy instantly with a single command.
@@ -23,7 +23,7 @@ PinMe publishes your site as verifiable content, making silent tampering and acc
 You don’t manage servers, regions, or uptime.
 PinMe handles availability and persistence for you.
 
-Website: [https://pinme.dev/](https://pinme.dev/)
+Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 
 ---
 
@@ -79,7 +79,7 @@ pinme upload dist
 pinme upload build
 ```
 
-That's it! You'll get a preview URL like `https://pinme.dev/#/preview/*`
+That's it! You'll get a preview URL like `https://pinme.eth.limo/#/preview/*`
 
 ---
 
@@ -130,7 +130,7 @@ This section provides AI-specific instructions for deploying websites using PinM
    ```
 
 6. **Return Result**
-   - Only return final preview page URL: `https://pinme.dev/#/preview/*`
+   - Only return final preview page URL: `https://pinme.eth.limo/#/preview/*`
    - Do not output additional logs or intermediate steps
 
 #### Prohibited Operations
@@ -161,7 +161,7 @@ For easy AI tool parsing:
     "total_directory": "1GB"
   },
   "output": "preview_url",
-  "preview_url_format": "https://pinme.dev/#/preview/*",
+  "preview_url_format": "https://pinme.eth.limo/#/preview/*",
   "fixed_domain_format": "https://*.pinit.eth.limo",
   "other_commands": {
     "version": "pinme --version",
@@ -188,7 +188,7 @@ For easy AI tool parsing:
 > 2. Check if pinme is installed, install if not
 > 3. Identify the static file directory for the website to deploy
 > 4. Execute deployment command
-> 5. Return preview page link: `https://pinme.dev/#/preview/*`
+> 5. Return preview page link: `https://pinme.eth.limo/#/preview/*`
 
 ---
 
@@ -409,7 +409,7 @@ pinme bind ./dist --domain my-site --dns
 - DNS domain: `https://<your-domain>`
 
 **DNS Setup:**
-After successful DNS domain binding, visit the [DNS Configuration Guide](https://pinme.dev/#/docs?id=custom-domain) to complete DNS setup.
+After successful DNS domain binding, visit the [DNS Configuration Guide](https://pinme.eth.limo/#/docs?id=custom-domain) to complete DNS setup.
 
 ### `upload`
 
@@ -535,7 +535,7 @@ Set AppKey for authentication and automatically merge anonymous upload history t
 pinme set-appkey [AppKey]
 ```
 
-**Note:** Fixed domain binding requires AppKey and Plus membership. Get your AppKey from [PinMe website](https://pinme.dev/).
+**Note:** Fixed domain binding requires AppKey and Plus membership. Get your AppKey from [PinMe website](https://pinme.eth.limo/).
 
 ### `show-appkey` / `appkey`
 
@@ -574,7 +574,7 @@ Domain binding (both Pinme subdomains and custom DNS domains) requires VIP membe
 **Before using domain binding:**
 
 1. **Upgrade to VIP**
-   - Visit [PinMe website](https://pinme.dev/) to upgrade
+   - Visit [PinMe website](https://pinme.eth.limo/) to upgrade
 
 2. **Set AppKey**
    ```bash
@@ -592,7 +592,7 @@ Domain binding (both Pinme subdomains and custom DNS domains) requires VIP membe
 
 ### Checking VIP Status
 
-If you attempt to bind a domain without VIP, you'll see an error message. You can check your VIP status on the [PinMe website](https://pinme.dev/).
+If you attempt to bind a domain without VIP, you'll see an error message. You can check your VIP status on the [PinMe website](https://pinme.eth.limo/).
 
 ---
 
@@ -649,7 +649,7 @@ Uploaded files are stored on the IPFS network and accessible through the Glitter
 
 **After successful upload, you receive:**
 1. IPFS content hash
-2. Preview page URL: `https://pinme.dev/#/preview/*`
+2. Preview page URL: `https://pinme.eth.limo/#/preview/*`
 3. Fixed domain option: `https://*.pinit.eth.limo`
 
 ### Log Locations
@@ -662,7 +662,7 @@ Uploaded files are stored on the IPFS network and accessible through the Glitter
 ## PinMe Platform Features
 
 ### Preview Page
-- Access uploaded website via preview link: `https://pinme.dev/#/preview/*`
+- Access uploaded website via preview link: `https://pinme.eth.limo/#/preview/*`
 - Get fixed domain: `https://*.pinit.eth.limo`
 
 ### Login and Management
@@ -832,7 +832,7 @@ If you have questions or suggestions, please contact us through:
 
 - GitHub Issues: [https://github.com/glitternetwork/pinme/issues](https://github.com/glitternetwork/pinme/issues)
 - Email: [pinme@glitterprotocol.io](mailto:pinme@glitterprotocol.io)
-- Website: [https://pinme.dev/](https://pinme.dev/)
+- Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 
 ---
 

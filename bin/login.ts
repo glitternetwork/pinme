@@ -10,7 +10,7 @@ export interface EnvOption {
 const ENV_URLS: Record<string, string> = {
   dev: 'http://localhost:5173',
   test: "http://test-pinme.pinit.eth.limo",
-  prod: 'https://pinme.dev',
+  prod: 'https://pinme.eth.limo',
 };
 
 export default async function loginCmd(options: EnvOption = {}): Promise<void> {

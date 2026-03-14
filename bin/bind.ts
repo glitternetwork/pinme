@@ -184,7 +184,7 @@ export default async function bindCmd(): Promise<void> {
         }
         console.log(chalk.green(`DNS bind success: ${displayDomain}`));
         console.log(chalk.white(`Visit: https://${displayDomain}`));
-        console.log(chalk.cyan('\n📚 DNS Setup Guide: https://pinme.dev/#/docs?id=custom-domain'));
+        console.log(chalk.cyan('\n📚 DNS Setup Guide: https://pinme.eth.limo/#/docs?id=custom-domain'));
       } else {
         // Pinme subdomain binding
         console.log(chalk.blue('Binding Pinme subdomain...'));

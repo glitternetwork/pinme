@@ -1,8 +1,8 @@
 # PinMe
 
-[PinMe](https://pinme.dev/) is a simple and easy-to-use command-line tool for uploading files and directories to the [IPFS](https://ipfs.tech/) network.
+[PinMe](https://pinme.eth.limo/) is a simple and easy-to-use command-line tool for uploading files and directories to the [IPFS](https://ipfs.tech/) network.
 
-Website: [https://pinme.dev/](https://pinme.dev/)
+Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 
 ## Features
 
