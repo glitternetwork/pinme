@@ -1,140 +1,140 @@
 ---
 name: pinme
-description: Use when user mentions "pinme", or needs to upload files, deploy static sites, store content on IPFS, or create/deploy web apps (frontend-only, frontend+API, or full-stack projects).
+description: 当用户提到 "pinme"，或需要上传文件、发布静态网站、将内容存储到 IPFS、创建或部署 Web 应用（含纯前端、前端+API、全栈项目）时使用此技能。
 ---
 
 # PinMe
 
-Zero-config deployment tool: upload static files to IPFS, or create and deploy full-stack web projects (React+Vite + Cloudflare Worker + D1 database). Worker also supports sending emails via Pinme platform API.
+零配置部署工具：将静态文件上传到 IPFS，或创建并部署全栈 Web 项目（React+Vite + Cloudflare Worker + D1 数据库）。Worker 还支持通过 Pinme 平台 API 发送邮件。
 
-## When to Use
+## 何时使用
 
 ```dot
 digraph pinme_decision {
-    "User request" [shape=doublecircle];
-    "Needs backend API or database?" [shape=diamond];
-    "Upload files (Path 1)" [shape=box];
-    "Full-stack project (Path 2)" [shape=box];
+    "用户请求" [shape=doublecircle];
+    "需要后端 API 或数据库？" [shape=diamond];
+    "上传文件（路径 1）" [shape=box];
+    "全栈项目（路径 2）" [shape=box];
 
-    "User request" -> "Needs backend API or database?";
-    "Needs backend API or database?" -> "Upload files (Path 1)" [label="no"];
-    "Needs backend API or database?" -> "Full-stack project (Path 2)" [label="yes"];
+    "用户请求" -> "需要后端 API 或数据库？";
+    "需要后端 API 或数据库？" -> "上传文件（路径 1）" [label="否"];
+    "需要后端 API 或数据库？" -> "全栈项目（路径 2）" [label="是"];
 }
 ```
 
-## Path 1: Upload Files / Static Sites
+## 路径 1：上传文件 / 静态站点
 
-> No login required.
+> 无需登录。
 
 ```dot
 digraph upload_flow {
-    "Check pinme installed" [shape=box];
-    "Identify build output" [shape=box];
+    "检查 pinme 是否已安装" [shape=box];
+    "确定构建产物" [shape=box];
     "pinme upload <path>" [shape=box];
-    "Return preview URL" [shape=doublecircle];
+    "返回预览 URL" [shape=doublecircle];
 
-    "Check pinme installed" -> "Identify build output";
-    "Identify build output" -> "pinme upload <path>";
-    "pinme upload <path>" -> "Return preview URL";
+    "检查 pinme 是否已安装" -> "确定构建产物";
+    "确定构建产物" -> "pinme upload <path>";
+    "pinme upload <path>" -> "返回预览 URL";
 }
 ```
 
-**1. Check installation:**
+**1. 检查安装：**
 ```bash
 pinme --version
-# If missing: npm install -g pinme
+# 如未安装：npm install -g pinme
 ```
 
-**2. Identify upload target** (priority order):
+**2. 确定上传目标**（优先级顺序）：
 1. `dist/` — Vite / Vue / React
 2. `build/` — Create React App
-3. `out/` — Next.js static export
-4. `public/` — Pure static
+3. `out/` — Next.js 静态导出
+4. `public/` — 纯静态文件
 
-**3. Upload:**
+**3. 上传：**
 ```bash
 pinme upload <path>
-pinme upload ./dist --domain my-site  # Optional: bind subdomain (VIP required)
+pinme upload ./dist --domain my-site  # 可选：绑定子域名（需 VIP）
 ```
 
-**4. Return** the preview URL (`https://pinme.eth.limo/#/preview/*`) to the user.
+**4. 返回**预览 URL（`https://pinme.eth.limo/#/preview/*`）给用户。
 
-### Common examples
+### 常见示例
 
 ```bash
-pinme upload ./document.pdf          # Single file
-pinme upload ./my-folder             # Folder
-pinme upload dist                    # Vite/Vue build output
-pinme upload build                   # CRA build output
-pinme upload out                     # Next.js static export
-pinme upload ./dist --domain my-site # Bind Pinme subdomain (VIP required)
-pinme import ./my-archive.car        # Import CAR file
+pinme upload ./document.pdf          # 单个文件
+pinme upload ./my-folder             # 文件夹
+pinme upload dist                    # Vite/Vue 构建产物
+pinme upload build                   # CRA 构建产物
+pinme upload out                     # Next.js 静态导出
+pinme upload ./dist --domain my-site # 绑定 Pinme 子域名（需 VIP）
+pinme import ./my-archive.car        # 导入 CAR 文件
 ```
 
-### Do NOT upload
-- `node_modules/`, `.env`, `.git/`, `src/`
-- Upload build artifacts only, not source code
+### 不要上传
+- `node_modules/`、`.env`、`.git/`、`src/`
+- 只上传构建产物，不要上传源代码
 
 ---
 
-## Path 2: Full-Stack Project
+## 路径 2：全栈项目
 
-> Login required. Uses React+Vite frontend + Cloudflare Worker backend + D1 SQLite database.
+> 需要登录。使用 React+Vite 前端 + Cloudflare Worker 后端 + D1 SQLite 数据库。
 
 ```dot
 digraph fullstack_flow {
     "pinme login" [shape=box];
     "pinme create <name>" [shape=box];
-    "Modify template code" [shape=box];
+    "修改模板代码" [shape=box];
     "pinme save" [shape=box];
-    "Return preview URL" [shape=doublecircle];
+    "返回预览 URL" [shape=doublecircle];
 
     "pinme login" -> "pinme create <name>";
-    "pinme create <name>" -> "Modify template code";
-    "Modify template code" -> "pinme save";
-    "pinme save" -> "Return preview URL";
+    "pinme create <name>" -> "修改模板代码";
+    "修改模板代码" -> "pinme save";
+    "pinme save" -> "返回预览 URL";
 }
 ```
 
-### Architecture
+### 架构
 
-| Layer | Tech | Deploy target |
-|-------|------|---------------|
-| Frontend | React + Vite (`frontend/`) | IPFS |
-| Backend | Cloudflare Worker (`backend/src/worker.ts`) | `{name}.pinme.pro` |
-| Database | D1 SQLite (`db/*.sql`) | Cloudflare D1 |
+| 层级 | 技术栈 | 部署目标 |
+|------|--------|----------|
+| 前端 | React + Vite（`frontend/`） | IPFS |
+| 后端 | Cloudflare Worker（`backend/src/worker.ts`） | `{name}.pinme.pro` |
+| 数据库 | D1 SQLite（`db/*.sql`） | Cloudflare D1 |
 
-### Core commands
+### 核心命令
 
 ```bash
-pinme login                  # Login (once)
-pinme create <dirName>       # Clone template and create project (auto-fills API URL)
-pinme save                   # First deploy / full update (frontend + backend + database, one command)
-pinme update-worker          # Update backend only (when only backend/src/worker.ts changed)
-pinme update-web             # Update frontend only (when only frontend/src/ changed)
-pinme update-db              # Run SQL migrations only (when only db/ changed)
+pinme login                  # 登录（仅需一次）
+pinme create <dirName>       # 克隆模板并创建项目（自动填充 API URL）
+pinme save                   # 首次部署 / 完整更新（前端 + 后端 + 数据库，一条命令）
+pinme update-worker          # 仅更新后端（当只修改了 backend/src/worker.ts）
+pinme update-web             # 仅更新前端（当只修改了 frontend/src/）
+pinme update-db              # 仅执行 SQL 迁移（当只修改了 db/）
 ```
 
-> `pinme save` deploys frontend + backend + database all at once. Only use `pinme update-*` when you're sure only one part changed.
+> `pinme save` 会一次性部署前端 + 后端 + 数据库。只有确定仅修改了某一部分时才使用 `pinme update-*`。
 
-### Project structure
+### 项目结构
 
 ```
 {project}/
-├── pinme.toml              # Root config (auto-generated, do NOT modify)
-├── package.json            # Monorepo root (workspaces: frontend + backend)
+├── pinme.toml              # 根配置（自动生成，请勿修改）
+├── package.json            # Monorepo 根目录（workspaces: frontend + backend）
 ├── backend/
-│   ├── wrangler.toml       # Worker config (auto-generated, do NOT modify)
+│   ├── wrangler.toml       # Worker 配置（自动生成，请勿修改）
 │   ├── package.json
 │   └── src/
-│       └── worker.ts       # Backend entry — JSON API only
+│       └── worker.ts       # 后端入口 — 仅提供 JSON API
 ├── db/
-│   └── 001_init.sql        # SQL table definitions
+│   └── 001_init.sql        # SQL 表定义
 ├── frontend/
 │   ├── package.json
-│   ├── vite.config.ts      # Dev proxy: /api → localhost:8787
+│   ├── vite.config.ts      # 开发代理：/api → localhost:8787
 │   ├── index.html
-│   ├── .env                # Auto-generated: VITE_WORKER_URL (do NOT modify)
+│   ├── .env                # 自动生成：VITE_WORKER_URL（请勿修改）
 │   └── src/
 │       ├── main.tsx
 │       ├── App.tsx
@@ -146,7 +146,7 @@ pinme update-db              # Run SQL migrations only (when only db/ changed)
 └── .gitignore
 ```
 
-### First deploy
+### 首次部署
 
 ```bash
 pinme login
@@ -154,45 +154,45 @@ pinme create my-app
 cd my-app
 ```
 
-`pinme create` generates a runnable Hello World template (with frontend page + backend API route + database schema). **Modify the template** to match user's business logic — don't write from scratch:
+`pinme create` 会生成一个可运行的 Hello World 模板（包含前端页面 + 后端 API 路由 + 数据库表结构）。**修改模板**以匹配用户的业务逻辑 — 不要从零开始编写：
 
-- Modify `backend/src/worker.ts` — replace API routes
-- Modify `frontend/src/pages/` — replace page components
-- Modify `db/001_init.sql` — replace table definitions
+- 修改 `backend/src/worker.ts` — 替换 API 路由
+- 修改 `frontend/src/pages/` — 替换页面组件
+- 修改 `db/001_init.sql` — 替换表定义
 
 ```bash
 pinme save
-# Deploys frontend + backend + database in one command
-# Outputs preview URL: https://pinme.eth.limo/#/preview/{CID}
+# 一条命令部署前端 + 后端 + 数据库
+# 输出预览 URL：https://pinme.eth.limo/#/preview/{CID}
 ```
 
-**Return** the preview URL to the user.
+**返回**预览 URL 给用户。
 
-Backend Worker is deployed at `https://{name}.pinme.pro`. Frontend API requests are auto-configured to point there — no manual setup needed.
+后端 Worker 部署在 `https://{name}.pinme.pro`。前端 API 请求会自动配置指向该地址 — 无需手动设置。
 
-### Subsequent updates
+### 后续更新
 
-| Changed | Command | Note |
-|---------|---------|------|
-| Backend only (`backend/src/worker.ts`) | `pinme update-worker` | Faster |
-| Frontend only (`frontend/src/`) | `pinme update-web` | New CID generated |
-| Database only (`db/`) | `pinme update-db` | Runs new migrations |
-| Multiple or unsure | `pinme save` | Safe full deploy |
+| 修改内容 | 命令 | 说明 |
+|----------|------|------|
+| 仅后端（`backend/src/worker.ts`） | `pinme update-worker` | 更快 |
+| 仅前端（`frontend/src/`） | `pinme update-web` | 生成新 CID |
+| 仅数据库（`db/`） | `pinme update-db` | 执行新迁移 |
+| 多处修改或不确定 | `pinme save` | 安全的完整部署 |
 
-> Each frontend deploy generates a new CID and preview URL. Old URLs remain accessible.
+> 每次前端部署会生成新的 CID 和预览 URL。旧 URL 仍可访问。
 
 ---
 
-## Worker Code Pattern (backend/src/worker.ts)
+## Worker 代码模式（backend/src/worker.ts）
 
-Worker backend writes JSON API only. **No npm packages allowed** (no hono, express, etc.). Hand-write routes:
+Worker 后端仅编写 JSON API。**不允许使用 npm 包**（不能用 hono、express 等）。手写路由：
 
 ```typescript
 export interface Env {
-  DB: D1Database;           // When using database
-  API_KEY?: string;         // When using email sending
-  JWT_SECRET: string;       // When using JWT auth
-  ADMIN_PASSWORD: string;   // When using password auth
+  DB: D1Database;           // 使用数据库时
+  API_KEY?: string;         // 使用邮件发送时
+  JWT_SECRET: string;       // 使用 JWT 认证时
+  ADMIN_PASSWORD: string;   // 使用密码认证时
 }
 
 const CORS_HEADERS = {
@@ -223,33 +223,33 @@ export default {
 };
 ```
 
-### Worker Restrictions
+### Worker 限制
 
-| Forbidden | Use instead |
-|-----------|------------|
-| `import from 'hono'` or any npm package | Hand-written routes (`if pathname === '/api/...'`) |
-| `import fs from 'fs'` / Node.js built-ins | Web API: `crypto`, `fetch`, `URL`, etc. |
-| `require()` syntax | ESM `import` only |
-| Worker returning HTML | JSON API only |
-| Storing passwords in plaintext | SHA-256 hash before storing |
-| SQL string concatenation | `.bind()` parameterized queries |
+| 禁止 | 替代方案 |
+|------|----------|
+| `import from 'hono'` 或任何 npm 包 | 手写路由（`if pathname === '/api/...'`） |
+| `import fs from 'fs'` / Node.js 内置模块 | Web API：`crypto`、`fetch`、`URL` 等 |
+| `require()` 语法 | 仅使用 ESM `import` |
+| Worker 返回 HTML | 仅返回 JSON API |
+| 明文存储密码 | 存储前使用 SHA-256 哈希 |
+| SQL 字符串拼接 | 使用 `.bind()` 参数化查询 |
 
-### Email API Reference (for Worker backend)
+### 邮件 API 参考（用于 Worker 后端）
 
-When the backend needs email sending capability, use Pinme platform API (`https://pinme.dev/api/v4/send_email`).
+当后端需要邮件发送功能时，使用 Pinme 平台 API（`https://pinme.dev/api/v4/send_email`）。
 
-**1. Configure API_KEY**
+**1. 配置 API_KEY**
 
-Add to `Env` interface:
+添加到 `Env` 接口：
 
 ```typescript
 export interface Env {
   DB: D1Database;
-  API_KEY?: string;  // Required for email sending
+  API_KEY?: string;  // 邮件发送必需
 }
 ```
 
-**2. Email handler code**
+**2. 邮件处理代码**
 
 ```typescript
 async function handleSendEmail(request: Request, env: Env): Promise<Response> {
@@ -291,27 +291,11 @@ async function handleSendEmail(request: Request, env: Env): Promise<Response> {
 }
 ```
 
-**3. Register route**
+## 前端 API 工具（frontend/src/utils/api.ts）
 
 ```typescript
-if (pathname === '/api/send-email' && method === 'POST') return handleSendEmail(request, env);
-```
-
-**4. Request format** — `POST /api/send-email`
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `to` | string | Yes | Recipient email address |
-| `subject` | string | Yes | Email subject |
-| `html` | string | Yes | Email body (HTML format) |
-
----
-
-## Frontend API Utility (frontend/src/utils/api.ts)
-
-```typescript
-// Dev: Vite proxy /api → localhost:8787
-// Prod: VITE_WORKER_URL auto-injected by pinme create
+// 开发环境：Vite 代理 /api → localhost:8787
+// 生产环境：VITE_WORKER_URL 由 pinme create 自动注入
 export const API = import.meta.env.VITE_WORKER_URL || '';
 
 export function getApiUrl(path: string): string {
@@ -319,74 +303,74 @@ export function getApiUrl(path: string): string {
 }
 ```
 
-## D1 Database Operations
+## D1 数据库操作
 
 ```typescript
-// Select multiple rows
+// 查询多行
 const { results } = await env.DB.prepare('SELECT * FROM t WHERE x = ?').bind(val).all();
 
-// Select single row (returns null if not found)
+// 查询单行（未找到返回 null）
 const row = await env.DB.prepare('SELECT * FROM t WHERE id = ?').bind(id).first();
 
-// Insert and return new row
+// 插入并返回新行
 const row = await env.DB.prepare('INSERT INTO t (a, b) VALUES (?, ?) RETURNING *').bind(a, b).first();
 
-// Update
+// 更新
 await env.DB.prepare('UPDATE t SET a = ? WHERE id = ?').bind(val, id).run();
 
-// Delete (check if hit)
+// 删除（检查是否命中）
 const { meta } = await env.DB.prepare('DELETE FROM t WHERE id = ?').bind(id).run();
 if (meta.changes === 0) return json({ error: 'Not found' }, 404);
 ```
 
-### SQL Migration Files
+### SQL 迁移文件
 
-**Format:** `db/NNN_description.sql` (e.g., `001_init.sql`). Executed in filename order.
+**格式：** `db/NNN_description.sql`（例如 `001_init.sql`）。按文件名顺序执行。
 
-**SQLite type constraints:**
+**SQLite 类型约束：**
 
-| Cannot use | Use instead |
-|------------|------------|
-| `BOOLEAN` | `INTEGER` (0 = false, 1 = true) |
-| `DATETIME` / `TIMESTAMP` | `TEXT`, store ISO 8601 (default: `datetime('now')`) |
-| `JSON` type | `TEXT`, use `JSON.stringify()` / `JSON.parse()` |
+| 不能使用 | 替代方案 |
+|----------|----------|
+| `BOOLEAN` | `INTEGER`（0 = false，1 = true） |
+| `DATETIME` / `TIMESTAMP` | `TEXT`，存储 ISO 8601（默认：`datetime('now')`） |
+| `JSON` 类型 | `TEXT`，使用 `JSON.stringify()` / `JSON.parse()` |
 | `VARCHAR(n)` | `TEXT` |
 
-## Capability Boundaries
+## 能力边界
 
-| Limitation | Workaround |
-|------------|-----------|
-| File storage (image uploads) | Store external image URL, or `pinme upload` then store IPFS link |
-| WebSocket | Polling API (fetch every 5 seconds) |
-| Multiple Workers | Merge into single Worker with route prefixes |
-| Multiple databases | Merge into one D1 |
+| 限制 | 替代方案 |
+|------|----------|
+| 文件存储（图片上传） | 存储外部图片 URL，或 `pinme upload` 后存储 IPFS 链接 |
+| WebSocket | 轮询 API（每 5 秒 fetch 一次） |
+| 多个 Worker | 合并为单个 Worker，使用路由前缀区分 |
+| 多个数据库 | 合并为一个 D1 |
 
-## Important Notes
+## 重要提示
 
-- `pinme.toml`, `backend/wrangler.toml`, `frontend/.env` are auto-generated — do NOT modify
-- Frontend API URL via `VITE_WORKER_URL` env var — do NOT hardcode
-- Passwords, tokens, API keys must go in secrets, not config files
+- `pinme.toml`、`backend/wrangler.toml`、`frontend/.env` 为自动生成 — 请勿修改
+- 前端 API URL 通过 `VITE_WORKER_URL` 环境变量获取 — 请勿硬编码
+- 密码、令牌、API 密钥必须放在 secrets 中，不要写在配置文件里
 
-## Common Mistakes
+## 常见错误
 
-| Error | Solution |
-|-------|----------|
+| 错误 | 解决方案 |
+|------|----------|
 | `command not found: pinme` | `npm install -g pinme` |
-| `No such file or directory` | Verify path exists |
-| `Permission denied` | Check file/folder permissions |
-| Upload fails | Check network, retry |
-| Not logged in error | Run `pinme login` first |
+| `No such file or directory` | 确认路径是否存在 |
+| `Permission denied` | 检查文件/文件夹权限 |
+| 上传失败 | 检查网络连接，重试 |
+| 未登录错误 | 先运行 `pinme login` |
 
-## Other Commands
+## 其他命令
 
 ```bash
-pinme list / pinme ls -l 5     # Show upload history
-pinme list -c                  # Clear upload history
-pinme rm <hash>                # Delete uploaded content
-pinme bind <path> --domain <domain>  # Bind domain (VIP + AppKey)
-pinme export <CID>             # Export as CAR file
-pinme set-appkey               # Set/view AppKey
-pinme my-domains               # List bound domains
-pinme delete <project>         # Delete project (Worker + domain + D1)
-pinme logout                   # Log out
+pinme list / pinme ls -l 5     # 查看上传历史
+pinme list -c                  # 清除上传历史
+pinme rm <hash>                # 删除已上传内容
+pinme bind <path> --domain <domain>  # 绑定域名（需 VIP + AppKey）
+pinme export <CID>             # 导出为 CAR 文件
+pinme set-appkey               # 设置/查看 AppKey
+pinme my-domains               # 列出已绑定域名
+pinme delete <project>          # 删除项目（Worker + 域名 + D1）
+pinme logout                   # 退出登录
 ```
