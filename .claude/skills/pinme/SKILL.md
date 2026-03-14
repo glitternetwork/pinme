@@ -125,12 +125,12 @@ cd my-app
 # 修改 frontend/src/pages/（添加页面组件）
 pinme save
 # ✅ 前端 + 后端 + 数据库一次性全部部署完成
-# ✅ 输出前端预览链接：https://pinme.eth.limo/#/preview/{CID}
+# ✅ 输出前端预览链接：https://pinme.dev/#/preview/{CID}
 #    打开该链接即可查看并获取最终前端访问地址
 ```
 
 > **注意：** 执行完 `pinme save` 后无需再执行任何其他命令，数据库迁移也已包含在内。
-> 前端部署成功后会输出一个预览链接（`https://pinme.eth.limo/#/preview/{CID}`），**将该链接返回给用户**，用户可在页面中查看最终访问地址。
+> 前端部署成功后会输出一个预览链接（`https://pinme.dev/#/preview/{CID}`），**将该链接返回给用户**，用户可在页面中查看最终访问地址。
 
 ### 后续更新（按改动内容选择）
 
@@ -141,7 +141,7 @@ pinme save
 | 只改了 SQL 迁移文件（`db/`） | `pinme update-db` | 只执行新增的迁移文件 |
 | 改了多处，或不确定改了哪里 | `pinme save` | 全量部署，安全兜底 |
 
-> ⚠️ **前端地址说明：** 每次部署前端（执行 `pinme save` 或 `pinme update-web`），只要前端文件有任何改动，都会生成新的 CID，输出一个新的预览链接 `https://pinme.eth.limo/#/preview/{CID}`。**旧链接仍然可以访问**，请将最新预览链接告知用户，用户可在页面中获取最终访问地址。
+> ⚠️ **前端地址说明：** 每次部署前端（执行 `pinme save` 或 `pinme update-web`），只要前端文件有任何改动，都会生成新的 CID，输出一个新的预览链接 `https://pinme.dev/#/preview/{CID}`。**旧链接仍然可以访问**，请将最新预览链接告知用户，用户可在页面中获取最终访问地址。
 
 ### 后端 Worker 代码模式（backend/src/worker.ts）
 
