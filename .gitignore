@@ -6,3 +6,4 @@ node_modules
 /temp
 /test-repro
 .catpaw
+.claude/settings.local.json
