@@ -5,7 +5,7 @@ import axios from 'axios';
 import { getAuthHeaders } from './utils/webLogin';
 
 const PROJECT_DIR = process.cwd();
-const API_BASE = process.env.PINME_API_BASE || 'https://pinme.benny1996.win/api/v4';
+const API_BASE = process.env.PINME_API_BASE || '';
 
 interface UpdateDbOptions {
   projectName?: string;
