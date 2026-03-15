@@ -11,6 +11,7 @@ import {
 } from './uploadLimits';
 import { saveUploadHistory } from './history';
 import { getUid } from './getDeviceId';
+import { getAuthHeaders } from './webLogin';
 
 // Configuration constants
 const IPFS_API_URL =
@@ -455,15 +456,32 @@ async function completeChunkUpload(
 ): Promise<string> {
   try {
     const requestBody: any = { session_id: sessionId, uid: deviceId };
+    const projectName = process.env.PINME_PROJECT_NAME?.trim();
+    let authHeaders: Record<string, string> = {};
     if (importAsCar) {
       requestBody.import_as_car = true;
     }
+    if (projectName) {
+      requestBody.project_name = projectName;
+      authHeaders = getAuthHeaders();
+    }
+    console.log(
+      `[chunk/complete] payload=${JSON.stringify({
+        session_id: requestBody.session_id,
+        uid: requestBody.uid,
+        import_as_car: !!requestBody.import_as_car,
+        project_name: requestBody.project_name || '',
+      })}`,
+    );
     const response = await axios.post<ChunkCompleteResponse>(
       `${IPFS_API_URL}/chunk/complete`,
       requestBody,
       {
         timeout: TIMEOUT,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
       },
     );
 

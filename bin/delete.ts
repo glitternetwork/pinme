@@ -98,17 +98,7 @@ export default async function deleteCmd(options: DeleteOptions): Promise<void> {
       console.log(chalk.gray(`   Worker deleted: ${data.data.worker_deleted ? '✅' : '❌'}`));
       console.log(chalk.gray(`   Database deleted: ${data.data.database_deleted ? '✅' : '❌'}`));
 
-      // 删除本地项目目录
-      const projectDir = process.cwd();
-      if (fs.existsSync(projectDir)) {
-        console.log(chalk.blue('\nDeleting local project directory...'));
-        // 先切换到父目录，避免在已删除的目录中
-        const parentDir = path.dirname(projectDir);
-        process.chdir(parentDir);
-        
-        await fs.remove(projectDir);
-        console.log(chalk.green(`✅ Local directory deleted: ${projectDir}`));
-      }
+      console.log(chalk.gray('\nLocal files are kept unchanged.'));
     } else {
       const errorMsg = data?.msg || 'Failed to delete project';
       throw new Error(errorMsg);

@@ -217,12 +217,16 @@ function buildFrontend() {
   }
 }
 
-function deployFrontend() {
+function deployFrontend(projectName: string) {
   console.log(chalk.blue('Deploying frontend to IPFS...'));
   try {
     execSync('pinme upload ./frontend/dist', {
       cwd: PROJECT_DIR,
       stdio: 'inherit',
+      env: {
+        ...process.env,
+        PINME_PROJECT_NAME: projectName,
+      },
     });
     console.log(chalk.green('Frontend deployed to IPFS'));
   } catch (error: any) {
@@ -285,7 +289,7 @@ export default async function saveCmd(options: SaveOptions): Promise<void> {
     // Frontend: build + deploy
     console.log(chalk.blue('\n--- Frontend ---'));
     buildFrontend();
-    deployFrontend();
+    deployFrontend(projectName);
 
     console.log(chalk.green('\n✅ Deployment complete!'));
     process.exit(0);
