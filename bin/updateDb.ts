@@ -107,8 +107,12 @@ async function updateDb(sqlFiles: string[], projectName: string) {
       throw new Error(errorMsg);
     }
   } catch (error: any) {
-    console.log(chalk.red(`   Response status: ${error.response?.status}`));
-    console.log(chalk.red(`   Response data: ${JSON.stringify(error.response?.data)}`));
+    if (error.response) {
+      console.log(chalk.red(`   Response status: ${error.response?.status}`));
+      console.log(chalk.red(`   Response data: ${JSON.stringify(error.response?.data)}`));
+    } else {
+      console.log(chalk.red('No Response'))
+    }
     const errorMsg = error.response?.data?.errors?.[0]?.message
       || error.response?.data?.error
       || error.response?.data?.msg
