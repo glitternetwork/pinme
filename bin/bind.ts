@@ -121,7 +121,6 @@ export default async function bindCmd(): Promise<void> {
 
     // Auto-detect domain type if not explicitly specified
     const isDns = dns || isDnsDomain(domain);
-    console.log(isDns,'isDns')
     const displayDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
     // Validate DNS domain format
