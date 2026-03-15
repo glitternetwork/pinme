@@ -5,7 +5,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { getAuthHeaders } from './utils/webLogin';
 
-const API_BASE = process.env.PINME_API_BASE || 'https://pinme.benny1996.win/api/v4';
+const API_BASE = process.env.PINME_API_BASE || '';
 
 interface DeleteOptions {
   name?: string;

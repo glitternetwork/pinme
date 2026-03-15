@@ -8,7 +8,7 @@ import { getAuthHeaders } from './utils/webLogin';
 
 // Template directory - relative to bin folder (works both in dev and npm)
 const PROJECT_DIR = process.cwd();
-const API_BASE = process.env.PINME_API_BASE || 'https://pinme.benny1996.win/api/v4';
+const API_BASE = process.env.PINME_API_BASE || '';
 
 // 模板仓库地址 (使用 HTTPS 下载 zip)
 const TEMPLATE_REPO = 'glitternetwork/pinme-worker-template';

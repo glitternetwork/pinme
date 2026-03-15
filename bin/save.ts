@@ -6,7 +6,7 @@ import { execSync } from 'child_process';
 import { getAuthHeaders } from './utils/webLogin';
 
 const PROJECT_DIR = process.cwd();
-const API_BASE = process.env.PINME_API_BASE || 'https://pinme.benny1996.win/api/v4';
+const API_BASE = process.env.PINME_API_BASE || '';
 
 interface SaveOptions {
   projectName?: string;
