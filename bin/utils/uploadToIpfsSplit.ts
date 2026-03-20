@@ -66,6 +66,7 @@ interface ChunkStatusResponse {
       Hash?: string;
       ShortUrl?: string;
     };
+    domain?: string;
   };
 }
 
@@ -154,9 +155,8 @@ class StepProgressBar {
 
       const duration = this.formatDuration(Math.floor(elapsed / 1000));
       const progressBar = this.createProgressBar(progress);
-      this.spinner.text = `Uploading ${
-        this.fileName
-      }... ${progressBar} ${Math.round(progress * 100)}% (${duration})`;
+      this.spinner.text = `Uploading ${this.fileName
+        }... ${progressBar} ${Math.round(progress * 100)}% (${duration})`;
     }, PROGRESS_UPDATE_INTERVAL);
   }
 
@@ -342,8 +342,7 @@ async function uploadChunkWithAbort(
     }
 
     throw new Error(
-      `Chunk ${chunkIndex + 1} upload failed after ${MAX_RETRIES} retries: ${
-        error.message
+      `Chunk ${chunkIndex + 1} upload failed after ${MAX_RETRIES} retries: ${error.message
       }`,
     );
   }
@@ -419,9 +418,8 @@ async function uploadFileChunks(
         }
 
         hasFatalError = true;
-        fatalError = `Chunk ${chunkIndex + 1}/${totalChunks} upload failed: ${
-          error.message
-        }`;
+        fatalError = `Chunk ${chunkIndex + 1}/${totalChunks} upload failed: ${error.message
+          }`;
         abortController.abort();
         throw new Error(fatalError);
       }
@@ -465,14 +463,6 @@ async function completeChunkUpload(
       requestBody.project_name = projectName;
       authHeaders = getAuthHeaders();
     }
-    console.log(
-      `[chunk/complete] payload=${JSON.stringify({
-        session_id: requestBody.session_id,
-        uid: requestBody.uid,
-        import_as_car: !!requestBody.import_as_car,
-        project_name: requestBody.project_name || '',
-      })}`,
-    );
     const response = await axios.post<ChunkCompleteResponse>(
       `${IPFS_API_URL}/chunk/complete`,
       requestBody,
@@ -503,10 +493,18 @@ async function getChunkStatus(
   deviceId: string,
 ): Promise<ChunkStatusResponse['data']> {
   try {
+    const projectName = process.env.PINME_PROJECT_NAME?.trim();
+    const queryParams = new URLSearchParams({
+      trace_id: sessionId,
+      uid: deviceId,
+    });
+    if (projectName) {
+      queryParams.append('project_name', projectName);
+    }
+
     const response = await axios.get<ChunkStatusResponse>(
-      `${IPFS_API_URL}/up_status`,
+      `${IPFS_API_URL}/up_status?${queryParams.toString()}`,
       {
-        params: { trace_id: sessionId, uid: deviceId },
         timeout: TIMEOUT,
         headers: { 'Content-Type': 'application/json' },
       },
@@ -549,9 +547,13 @@ async function monitorChunkProgress(
           if (progressBar) {
             progressBar.stopSimulatingProgress();
           }
+          // Use domain from backend to construct full URL
+          const shortUrl = status.upload_rst.ShortUrl;
+          const domain = status.domain;
+          const fullShortUrl = shortUrl && domain ? `${shortUrl}.${domain}` : shortUrl;
           return {
             hash: status.upload_rst.Hash,
-            shortUrl: status.upload_rst.ShortUrl,
+            shortUrl: fullShortUrl,
           };
         }
       } catch (error: any) {
@@ -729,7 +731,7 @@ export default async function (filePath: string, importAsCar: boolean = false): 
 
   try {
     const isDirectory = fs.statSync(filePath).isDirectory();
-    const result = isDirectory 
+    const result = isDirectory
       ? await uploadDirectoryInChunks(filePath, deviceId, importAsCar)
       : await uploadFileInChunks(filePath, deviceId, importAsCar);
 
@@ -740,8 +742,8 @@ export default async function (filePath: string, importAsCar: boolean = false): 
         shortUrl: result.shortUrl,
       };
     }
-    return null;
+    throw new Error('Upload failed: no hash returned');
   } catch (error: any) {
-    return null;
+    throw error;
   }
 }
