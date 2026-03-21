@@ -4,6 +4,12 @@ import path from 'path';
 import axios from 'axios';
 import { execSync } from 'child_process';
 import { getAuthHeaders } from './utils/webLogin';
+import {
+  createApiError,
+  createCommandError,
+  createConfigError,
+  printCliError,
+} from './utils/cliError';
 
 const PROJECT_DIR = process.cwd();
 const API_BASE = process.env.PINME_API_BASE || '';
@@ -18,7 +24,10 @@ interface SaveOptions {
 function loadConfig() {
   const configPath = path.join(PROJECT_DIR, 'pinme.toml');
   if (!fs.existsSync(configPath)) {
-    throw new Error('pinme.toml not found');
+    throw createConfigError('`pinme.toml` not found in the current directory.', [
+      'Run this command from the Pinme project root.',
+      'If the project has not been initialized yet, create or restore `pinme.toml` first.',
+    ]);
   }
 
   const configContent = fs.readFileSync(configPath, 'utf-8');
@@ -48,7 +57,9 @@ function buildWorker() {
     });
     console.log(chalk.green('Worker built'));
   } catch (error: any) {
-    throw new Error(`Worker build failed: ${error.message}`);
+    throw createCommandError('worker build', 'npm run build:worker', error, [
+      'Fix the build error shown above, then rerun `pinme save`.',
+    ]);
   }
 }
 
@@ -65,7 +76,10 @@ function installDependencies() {
     });
     console.log(chalk.green('Root dependencies installed'));
   } catch (error: any) {
-    throw new Error(`Root dependencies install failed: ${error.message}`);
+    throw createCommandError('root dependency install', 'npm install', error, [
+      'Check network connectivity and npm registry availability.',
+      'If `package-lock.json` is stale or conflicted, resolve that before retrying.',
+    ]);
   }
   
   // 安装后端依赖
@@ -78,7 +92,9 @@ function installDependencies() {
       });
       console.log(chalk.green('Backend dependencies installed'));
     } catch (error: any) {
-      throw new Error(`Backend dependencies install failed: ${error.message}`);
+      throw createCommandError('backend dependency install', 'npm install', error, [
+        'Inspect `backend/package.json` and the npm output above for the failing package.',
+      ]);
     }
   }
   
@@ -92,7 +108,9 @@ function installDependencies() {
       });
       console.log(chalk.green('Frontend dependencies installed'));
     } catch (error: any) {
-      throw new Error(`Frontend dependencies install failed: ${error.message}`);
+      throw createCommandError('frontend dependency install', 'npm install', error, [
+        'Inspect `frontend/package.json` and the npm output above for the failing package.',
+      ]);
     }
   }
 }
@@ -101,12 +119,16 @@ function getBuiltWorker(): { workerJsPath: string; modulePaths: string[] } {
   const distWorkerDir = path.join(PROJECT_DIR, 'dist-worker');
 
   if (!fs.existsSync(distWorkerDir)) {
-    throw new Error('Dist worker not found. Run "npm run build:worker" first.');
+    throw createConfigError('Built worker output not found: `dist-worker/`.', [
+      'Make sure `npm run build:worker` completed successfully.',
+    ]);
   }
 
   const workerJsPath = path.join(distWorkerDir, 'worker.js');
   if (!fs.existsSync(workerJsPath)) {
-    throw new Error('worker.js not found in dist-worker');
+    throw createConfigError('Built worker entry file not found: `dist-worker/worker.js`.', [
+      'Check the worker build output and bundler config.',
+    ]);
   }
 
   const modulePaths: string[] = [];
@@ -189,16 +211,20 @@ async function saveWorker(workerJsPath: string, modulePaths: string[], sqlFiles:
         }
       }
     } else {
-      throw new Error(response.data?.errors?.[0]?.message || 'Failed to save worker');
+      throw createApiError('worker save', { response: { data: response.data } }, [
+        `Project: ${projectName}`,
+        `Endpoint: ${apiUrl}`,
+      ], [
+        'Verify the project exists and your account has permission to update it.',
+      ]);
     }
   } catch (error: any) {
-    console.log(chalk.red(`   Response status: ${error.response?.status}`));
-    console.log(chalk.red(`   Response data: ${JSON.stringify(error.response?.data)}`));
-    const errorMsg = error.response?.data?.errors?.[0]?.message
-      || error.response?.data?.error
-      || error.message
-      || 'Failed to save worker';
-    throw new Error(errorMsg);
+    throw createApiError('worker save', error, [
+      `Project: ${projectName}`,
+      `Endpoint: ${apiUrl}`,
+    ], [
+      'Check whether backend metadata, SQL files, or worker bundle contains invalid content.',
+    ]);
   }
 }
 
@@ -213,7 +239,9 @@ function buildFrontend() {
     });
     console.log(chalk.green('Frontend built'));
   } catch (error: any) {
-    throw new Error(`Frontend build failed: ${error.message}`);
+    throw createCommandError('frontend build', 'npm run build:frontend', error, [
+      'Fix the frontend build error shown above, then rerun `pinme save`.',
+    ]);
   }
 }
 
@@ -230,7 +258,9 @@ function deployFrontend(projectName: string) {
     });
     console.log(chalk.green('Frontend deployed to IPFS'));
   } catch (error: any) {
-    throw new Error(`Frontend deploy failed: ${error.message}`);
+    throw createCommandError('frontend deploy', 'pinme upload ./frontend/dist', error, [
+      'Make sure `frontend/dist` exists and `pinme upload` works in this environment.',
+    ]);
   }
 }
 
@@ -244,9 +274,9 @@ export default async function saveCmd(options: SaveOptions): Promise<void> {
     // Check if user is logged in
     const headers = getAuthHeaders();
     if (!headers['authentication-tokens'] || !headers['token-address']) {
-      console.log(chalk.yellow('\n⚠️  You are not logged in.'));
-      console.log(chalk.gray('Please run: pinme login'));
-      process.exit(1);
+      throw createConfigError('No valid local login session was found.', [
+        'Run `pinme login` and retry.',
+      ]);
     }
 
     // Copy token to project directory for sub-commands
@@ -257,7 +287,7 @@ export default async function saveCmd(options: SaveOptions): Promise<void> {
       fs.copySync(tokenFileSrc, tokenFileDst);
     }
 
-    console.log(chalk.blue('🚀 Deploying to platform...\n'));
+    console.log(chalk.blue('Deploying to platform...\n'));
 
     console.log(chalk.gray(`Project dir: ${PROJECT_DIR}`));
 
@@ -265,7 +295,9 @@ export default async function saveCmd(options: SaveOptions): Promise<void> {
     const projectName = config.project_name;
 
     if (!projectName) {
-      throw new Error('project_name not found in pinme.toml');
+      throw createConfigError('`project_name` is missing in `pinme.toml`.', [
+        'Set `project_name = "your-project-name"` in `pinme.toml`.',
+      ]);
     }
 
     console.log(chalk.gray(`Project: ${projectName}`));
@@ -291,10 +323,10 @@ export default async function saveCmd(options: SaveOptions): Promise<void> {
     buildFrontend();
     deployFrontend(projectName);
 
-    console.log(chalk.green('\n✅ Deployment complete!'));
+    console.log(chalk.green('\nDeployment complete.'));
     process.exit(0);
   } catch (error: any) {
-    console.error(chalk.red(`\n❌ Error: ${error.message}`));
+    printCliError(error, 'Save failed.');
     process.exit(1);
   }
 }

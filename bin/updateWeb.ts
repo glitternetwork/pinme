@@ -3,6 +3,11 @@ import fs from 'fs-extra';
 import path from 'path';
 import { execSync } from 'child_process';
 import { getAuthHeaders } from './utils/webLogin';
+import {
+  createCommandError,
+  createConfigError,
+  printCliError,
+} from './utils/cliError';
 
 const PROJECT_DIR = process.cwd();
 
@@ -16,7 +21,9 @@ interface UpdateWebOptions {
 function loadConfig() {
   const configPath = path.join(PROJECT_DIR, 'pinme.toml');
   if (!fs.existsSync(configPath)) {
-    throw new Error('pinme.toml not found');
+    throw createConfigError('`pinme.toml` not found in the current directory.', [
+      'Run this command from the Pinme project root.',
+    ]);
   }
 
   const configContent = fs.readFileSync(configPath, 'utf-8');
@@ -38,7 +45,9 @@ function buildFrontend() {
     });
     console.log(chalk.green('Frontend built'));
   } catch (error: any) {
-    throw new Error(`Frontend build failed: ${error.message}`);
+    throw createCommandError('frontend build', 'npm run build:frontend', error, [
+      'Fix the frontend build error shown above, then rerun `pinme update-web`.',
+    ]);
   }
 }
 
@@ -55,7 +64,9 @@ function deployFrontend(projectName: string) {
     });
     console.log(chalk.green('Frontend deployed to IPFS'));
   } catch (error: any) {
-    throw new Error(`Frontend deploy failed: ${error.message}`);
+    throw createCommandError('frontend deploy', 'pinme upload ./frontend/dist', error, [
+      'Make sure `frontend/dist` exists and `pinme upload` can run successfully.',
+    ]);
   }
 }
 
@@ -69,9 +80,9 @@ export default async function updateWebCmd(options?: UpdateWebOptions): Promise<
     // Check if user is logged in
     const headers = getAuthHeaders();
     if (!headers['authentication-tokens'] || !headers['token-address']) {
-      console.log(chalk.yellow('\n⚠️  You are not logged in.'));
-      console.log(chalk.gray('Please run: pinme login'));
-      process.exit(1);
+      throw createConfigError('No valid local login session was found.', [
+        'Run `pinme login` and retry.',
+      ]);
     }
 
     // Copy token to project directory for sub-commands
@@ -82,7 +93,7 @@ export default async function updateWebCmd(options?: UpdateWebOptions): Promise<
       fs.copySync(tokenFileSrc, tokenFileDst);
     }
 
-    console.log(chalk.blue('🚀 Updating web (frontend)...\n'));
+    console.log(chalk.blue('Updating web (frontend)...\n'));
 
     console.log(chalk.gray(`Project dir: ${PROJECT_DIR}`));
 
@@ -90,7 +101,9 @@ export default async function updateWebCmd(options?: UpdateWebOptions): Promise<
     const projectName = config.project_name;
 
     if (!projectName) {
-      throw new Error('project_name not found in pinme.toml');
+      throw createConfigError('`project_name` is missing in `pinme.toml`.', [
+        'Set `project_name = "your-project-name"` in `pinme.toml`.',
+      ]);
     }
 
     console.log(chalk.gray(`Project: ${projectName}`));
@@ -100,10 +113,10 @@ export default async function updateWebCmd(options?: UpdateWebOptions): Promise<
     buildFrontend();
     deployFrontend(projectName);
 
-    console.log(chalk.green('\n✅ Web update complete!'));
+    console.log(chalk.green('\nWeb update complete.'));
     process.exit(0);
   } catch (error: any) {
-    console.error(chalk.red(`\n❌ Error: ${error.message}`));
+    printCliError(error, 'Web update failed.');
     process.exit(1);
   }
 }

@@ -3,6 +3,11 @@ import fs from 'fs-extra';
 import path from 'path';
 import axios from 'axios';
 import { getAuthHeaders } from './utils/webLogin';
+import {
+  createApiError,
+  createConfigError,
+  printCliError,
+} from './utils/cliError';
 
 const PROJECT_DIR = process.cwd();
 const API_BASE = process.env.PINME_API_BASE || '';
@@ -17,7 +22,9 @@ interface UpdateDbOptions {
 function loadConfig() {
   const configPath = path.join(PROJECT_DIR, 'pinme.toml');
   if (!fs.existsSync(configPath)) {
-    throw new Error('pinme.toml not found');
+    throw createConfigError('`pinme.toml` not found in the current directory.', [
+      'Run this command from the Pinme project root.',
+    ]);
   }
 
   const configContent = fs.readFileSync(configPath, 'utf-8');
@@ -31,7 +38,9 @@ function loadConfig() {
 function getSqlFiles(): string[] {
   const sqlDir = path.join(PROJECT_DIR, 'db');
   if (!fs.existsSync(sqlDir)) {
-    throw new Error('SQL directory not found: db');
+    throw createConfigError('SQL directory not found: `db/`.', [
+      'Create a `db/` directory and add at least one `.sql` migration file.',
+    ]);
   }
 
   const files = fs.readdirSync(sqlDir)
@@ -39,7 +48,9 @@ function getSqlFiles(): string[] {
     .sort();
 
   if (files.length === 0) {
-    throw new Error('No SQL files found in db');
+    throw createConfigError('No `.sql` files were found in `db/`.', [
+      'Add one or more migration files before running `pinme update-db`.',
+    ]);
   }
 
   return files.map(f => path.join(sqlDir, f));
@@ -69,7 +80,9 @@ async function updateDb(sqlFiles: string[], projectName: string) {
       totalSize += content.length;
 
       if (totalSize > 10 * 1024 * 1024) {
-        throw new Error('Total SQL files size exceeds 10MB limit');
+        throw createConfigError('Total SQL payload exceeds the 10MB platform limit.', [
+          'Split migrations into smaller batches, then rerun `pinme update-db`.',
+        ]);
       }
 
       formData.append('file', new Blob([content], {
@@ -93,28 +106,30 @@ async function updateDb(sqlFiles: string[], projectName: string) {
       const results = response.data.data.results;
       for (const result of results) {
         if (result.status === 'complete') {
-          console.log(chalk.green(`   ✓ ${result.filename}: ${result.num_queries} queries, ${result.duration}ms`));
+          console.log(chalk.green(`   COMPLETE ${result.filename}: ${result.num_queries} queries, ${result.duration}ms`));
           if (result.changes !== undefined) {
             console.log(chalk.gray(`     Changes: ${result.changes}, Read: ${result.rows_read}, Written: ${result.rows_written}`));
           }
         } else if (result.status === 'error') {
-          console.log(chalk.red(`   ✗ ${result.filename}: ${result.error}`));
+          console.log(chalk.red(`   ERROR ${result.filename}: ${result.error}`));
         }
       }
     } else {
       // Handle partial failure or other errors
-      const errorMsg = response.data.msg || response.data.error || 'Failed to import SQL files';
-      throw new Error(errorMsg);
+      throw createApiError('database update', { response: { data: response.data } }, [
+        `Project: ${projectName}`,
+        `Endpoint: ${apiUrl}`,
+      ], [
+        'Inspect the SQL result list above to identify the failing migration file.',
+      ]);
     }
   } catch (error: any) {
-    console.log(chalk.red(`   Response status: ${error.response?.status}`));
-    console.log(chalk.red(`   Response data: ${JSON.stringify(error.response?.data)}`));
-    const errorMsg = error.response?.data?.errors?.[0]?.message
-      || error.response?.data?.error
-      || error.response?.data?.msg
-      || error.message
-      || 'Failed to import SQL files';
-    throw new Error(errorMsg);
+    throw createApiError('database update', error, [
+      `Project: ${projectName}`,
+      `Endpoint: ${apiUrl}`,
+    ], [
+      'Validate the SQL syntax and check whether any migration is re-applying an existing schema change.',
+    ]);
   }
 }
 
@@ -129,9 +144,9 @@ export default async function updateDbCmd(options?: UpdateDbOptions): Promise<vo
     // Check if user is logged in
     const headers = getAuthHeaders();
     if (!headers['authentication-tokens'] || !headers['token-address']) {
-      console.log(chalk.yellow('\n⚠️  You are not logged in.'));
-      console.log(chalk.gray('Please run: pinme login'));
-      process.exit(1);
+      throw createConfigError('No valid local login session was found.', [
+        'Run `pinme login` and retry.',
+      ]);
     }
 
     // Copy token to project directory for sub-commands
@@ -142,7 +157,7 @@ export default async function updateDbCmd(options?: UpdateDbOptions): Promise<vo
       fs.copySync(tokenFileSrc, tokenFileDst);
     }
 
-    console.log(chalk.blue('🚀 Importing SQL to database...\n'));
+    console.log(chalk.blue('Importing SQL to database...\n'));
 
     console.log(chalk.gray(`Project dir: ${PROJECT_DIR}`));
 
@@ -150,7 +165,9 @@ export default async function updateDbCmd(options?: UpdateDbOptions): Promise<vo
     const projectName = config.project_name;
 
     if (!projectName) {
-      throw new Error('project_name not found in pinme.toml');
+      throw createConfigError('`project_name` is missing in `pinme.toml`.', [
+        'Set `project_name = "your-project-name"` in `pinme.toml`.',
+      ]);
     }
 
     console.log(chalk.gray(`Project: ${projectName}`));
@@ -161,10 +178,10 @@ export default async function updateDbCmd(options?: UpdateDbOptions): Promise<vo
 
     await updateDb(sqlFiles, projectName);
 
-    console.log(chalk.green('\n✅ Database update complete!'));
+    console.log(chalk.green('\nDatabase update complete.'));
     process.exit(0);
   } catch (error: any) {
-    console.error(chalk.red(`\n❌ Error: ${error.message}`));
+    printCliError(error, 'Database update failed.');
     process.exit(1);
   }
 }
