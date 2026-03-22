@@ -68,6 +68,8 @@ function buildWorker() {
 function installDependencies() {
   console.log(chalk.blue('Installing dependencies...'));
 
+  // 安装根目录依赖
+
   // The project template uses npm workspaces. Installing from the root
   // keeps frontend/backend versions in sync and avoids redundant installs.
   try {
@@ -127,11 +129,11 @@ function getSqlFiles(): string[] {
 
 async function saveWorker(workerJsPath: string, modulePaths: string[], sqlFiles: string[], metadata: any, projectName: string) {
   console.log(chalk.blue('Saving worker to platform...'));
-    console.log(chalk.gray(`Project: ${projectName}`));
-    console.log(chalk.gray(`workerJsPath: ${workerJsPath}`));
-    console.log(chalk.gray(`modulePaths: ${modulePaths}`));
-    console.log(chalk.gray(`sqlFiles: ${sqlFiles}`));
-    console.log(chalk.gray(`metadata: ${metadata}`));
+  console.log(chalk.gray(`Project: ${projectName}`));
+  console.log(chalk.gray(`workerJsPath: ${workerJsPath}`));
+  console.log(chalk.gray(`modulePaths: ${modulePaths}`));
+  console.log(chalk.gray(`sqlFiles: ${sqlFiles}`));
+  console.log(chalk.gray(`metadata: ${metadata}`));
   const apiUrl = `${API_BASE}/save_worker?project_name=${encodeURIComponent(projectName)}`;
   const headers = getAuthHeaders();
   console.log(chalk.gray(`API URL: ${apiUrl}`));
