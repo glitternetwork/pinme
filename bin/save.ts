@@ -67,51 +67,20 @@ function buildWorker() {
 
 function installDependencies() {
   console.log(chalk.blue('Installing dependencies...'));
-  
-  // 安装根目录依赖
+
+  // The project template uses npm workspaces. Installing from the root
+  // keeps frontend/backend versions in sync and avoids redundant installs.
   try {
     execSync('npm install', {
       cwd: PROJECT_DIR,
       stdio: 'inherit',
     });
-    console.log(chalk.green('Root dependencies installed'));
+    console.log(chalk.green('Project dependencies installed'));
   } catch (error: any) {
-    throw createCommandError('root dependency install', 'npm install', error, [
+    throw createCommandError('project dependency install', 'npm install', error, [
       'Check network connectivity and npm registry availability.',
       'If `package-lock.json` is stale or conflicted, resolve that before retrying.',
     ]);
-  }
-  
-  // 安装后端依赖
-  const backendDir = path.join(PROJECT_DIR, 'backend');
-  if (fs.existsSync(path.join(backendDir, 'package.json'))) {
-    try {
-      execSync('npm install', {
-        cwd: backendDir,
-        stdio: 'inherit',
-      });
-      console.log(chalk.green('Backend dependencies installed'));
-    } catch (error: any) {
-      throw createCommandError('backend dependency install', 'npm install', error, [
-        'Inspect `backend/package.json` and the npm output above for the failing package.',
-      ]);
-    }
-  }
-  
-  // 安装前端依赖
-  const frontendDir = path.join(PROJECT_DIR, 'frontend');
-  if (fs.existsSync(path.join(frontendDir, 'package.json'))) {
-    try {
-      execSync('npm install', {
-        cwd: frontendDir,
-        stdio: 'inherit',
-      });
-      console.log(chalk.green('Frontend dependencies installed'));
-    } catch (error: any) {
-      throw createCommandError('frontend dependency install', 'npm install', error, [
-        'Inspect `frontend/package.json` and the npm output above for the failing package.',
-      ]);
-    }
   }
 }
 

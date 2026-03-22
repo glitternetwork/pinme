@@ -742,6 +742,6 @@ export default async function (filePath: string, importAsCar: boolean = false): 
     }
     return null;
   } catch (error: any) {
-    return null;
+    throw error;
   }
 }

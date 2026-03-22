@@ -41,87 +41,31 @@ function stringifyValue(value: unknown): string {
 }
 
 function getApiMessage(data: any): string | undefined {
-  return data?.errors?.[0]?.message
+  return data?.data?.error
+    || data?.errors?.[0]?.message
     || data?.message
     || data?.msg
     || data?.error;
 }
 
+function getBusinessCode(data: any): string | undefined {
+  if (data?.code === undefined || data?.code === null) {
+    return undefined;
+  }
+
+  return String(data.code);
+}
+
+function getBusinessMessage(data: any): string | undefined {
+  if (!data?.msg) {
+    return undefined;
+  }
+
+  return String(data.msg);
+}
+
 function dedupeSuggestions(suggestions: string[]): string[] {
   return Array.from(new Set(suggestions.filter(Boolean)));
-}
-
-function inferApiSummary(stage: string, status: number | undefined, errorCode: string | undefined, apiMessage: string | undefined, rawResponse: string): string {
-  const text = `${apiMessage || ''} ${rawResponse}`.toLowerCase();
-
-  if (status === 401 || status === 403) {
-    return 'Authentication expired or permission denied.';
-  }
-
-  if (status === 404) {
-    return 'Project or API endpoint was not found.';
-  }
-
-  if (errorCode === 'ECONNABORTED' || text.includes('timeout')) {
-    return 'Request timed out while talking to the platform.';
-  }
-
-  if (errorCode === 'ENOTFOUND' || errorCode === 'ECONNREFUSED' || errorCode === 'ECONNRESET') {
-    return 'Unable to connect to the platform API.';
-  }
-
-  if (text.includes('sql') || text.includes('sqlite') || text.includes('migration')) {
-    return 'Database migration failed.';
-  }
-
-  if (text.includes('not found') && text.includes('project')) {
-    return 'Project was not found on the platform.';
-  }
-
-  if (text.includes('already exists') || text.includes('duplicate')) {
-    return 'The platform rejected the request because of conflicting existing data.';
-  }
-
-  if (status && status >= 500) {
-    return 'The platform returned a server-side error.';
-  }
-
-  return apiMessage || `${stage} failed.`;
-}
-
-function inferApiSuggestions(status: number | undefined, errorCode: string | undefined, apiMessage: string | undefined, rawResponse: string): string[] {
-  const text = `${apiMessage || ''} ${rawResponse}`.toLowerCase();
-  const suggestions: string[] = [];
-
-  if (status === 401 || status === 403) {
-    suggestions.push('Run `pinme login` again to refresh local auth.');
-  }
-
-  if (status === 404 || (text.includes('project') && text.includes('not found'))) {
-    suggestions.push('Confirm `project_name` in `pinme.toml` matches an existing project.');
-  }
-
-  if (errorCode === 'ECONNABORTED' || text.includes('timeout')) {
-    suggestions.push('Retry once. If it keeps timing out, check network quality and platform responsiveness.');
-  }
-
-  if (errorCode === 'ENOTFOUND' || errorCode === 'ECONNREFUSED' || errorCode === 'ECONNRESET') {
-    suggestions.push('Check `PINME_API_BASE`, local network connectivity, and whether the API service is reachable.');
-  }
-
-  if (text.includes('sql') || text.includes('sqlite') || text.includes('migration')) {
-    suggestions.push('Review the SQL file mentioned in the response and verify it is safe to run on the current schema.');
-  }
-
-  if (text.includes('already exists') || text.includes('duplicate')) {
-    suggestions.push('Check whether this resource or schema change was already created in a previous deployment.');
-  }
-
-  if (status && status >= 500) {
-    suggestions.push('The platform returned a server-side error. Retry once and check the backend logs if it persists.');
-  }
-
-  return suggestions;
 }
 
 export function createConfigError(summary: string, suggestions: string[] = []): CliError {
@@ -163,39 +107,42 @@ export function createApiError(stage: string, error: any, context: string[] = []
   const responseData = error?.response?.data;
   const errorCode = error?.code;
   const apiMessage = getApiMessage(responseData);
+  const businessCode = getBusinessCode(responseData);
+  const businessMessage = getBusinessMessage(responseData);
+  const summary = apiMessage
+    || error?.message
+    || `${stage} failed.`;
   const detailLines = [...context];
 
   if (status) {
     detailLines.push(`HTTP status: ${status}`);
   }
 
+  if (businessCode) {
+    detailLines.push(`Business code: ${businessCode}`);
+  }
+
+  if (businessMessage && businessMessage !== apiMessage) {
+    detailLines.push(`Business message: ${businessMessage}`);
+  }
+
   if (apiMessage && apiMessage !== summary) {
-    detailLines.push(`API message: ${apiMessage}`);
+    detailLines.push(`Error message: ${apiMessage}`);
   }
 
-  const rawResponse = stringifyValue(responseData);
-  if (rawResponse) {
-    detailLines.push(`API response: ${rawResponse}`);
-  }
-
-  if (errorCode && errorCode !== 'ERR_BAD_REQUEST') {
+  if (errorCode && errorCode !== 'ERR_BAD_REQUEST' && !responseData) {
     detailLines.push(`Error code: ${errorCode}`);
   }
 
-  if (!rawResponse && error?.message && error.message !== apiMessage) {
+  if (!responseData && error?.message && error.message !== apiMessage) {
     detailLines.push(`Reason: ${error.message}`);
   }
-
-  const inferredSuggestions = inferApiSuggestions(status, errorCode, apiMessage, rawResponse);
-  const summary = inferApiSummary(stage, status, errorCode, apiMessage, rawResponse)
-    || error?.message
-    || `${stage} failed.`;
 
   return new CliError({
     summary,
     stage,
     details: detailLines,
-    suggestions: dedupeSuggestions([...inferredSuggestions, ...suggestions]),
+    suggestions: dedupeSuggestions(suggestions),
     cause: error,
   });
 }

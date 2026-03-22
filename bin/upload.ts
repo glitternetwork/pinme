@@ -287,6 +287,10 @@ export default async (options?: UploadOptions): Promise<void> => {
       console.log(chalk.blue(`uploading ${absolutePath} to ipfs...`));
       try {
         const result = await upload(absolutePath);
+        if (!result) {
+          throw new Error('Upload failed without a result');
+        }
+
         if (result) {
           console.log(
             chalk.cyan(
@@ -389,6 +393,9 @@ export default async (options?: UploadOptions): Promise<void> => {
       console.log(chalk.blue(`uploading ${absolutePath} to ipfs...`));
       try {
         const result = await upload(absolutePath);
+        if (!result) {
+          throw new Error('Upload failed without a result');
+        }
 
         if (result) {
           console.log(
