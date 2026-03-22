@@ -5,6 +5,12 @@ import inquirer from 'inquirer';
 import axios from 'axios';
 import { execSync } from 'child_process';
 import { getAuthHeaders } from './utils/webLogin';
+import {
+  createApiError,
+  createCommandError,
+  createConfigError,
+  printCliError,
+} from './utils/cliError';
 
 // Template directory - relative to bin folder (works both in dev and npm)
 const PROJECT_DIR = process.cwd();
@@ -39,9 +45,9 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
     // Check if user is logged in
     const headers = getAuthHeaders();
     if (!headers['authentication-tokens'] || !headers['token-address']) {
-      console.log(chalk.yellow('\n⚠️  You are not logged in.'));
-      console.log(chalk.gray('Please run: pinme login'));
-      process.exit(1);
+      throw createConfigError('No valid local login session was found.', [
+        'Run `pinme login` and retry.',
+      ]);
     }
 
     console.log(chalk.blue('Creating new project from template...\n'));
@@ -109,8 +115,10 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       const data = response.data;
 
       if (data.code !== 200) {
-        const errorMsg = data?.data?.error || data?.msg || 'Failed to create worker';
-        throw new Error(errorMsg);
+        throw createApiError('project creation', { response: { status: response.status, data } }, [
+          `Project name: ${normalizedProjectName}`,
+          `Endpoint: ${apiUrl}`,
+        ]);
       }
 
       workerData = data.data;
@@ -119,11 +127,10 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       console.log(chalk.green(`   Project Name: ${workerData.project_name}`));
       console.log(chalk.green(`   D1 UUID: ${workerData.uuid}`));
     } catch (error: any) {
-      const errorMsg = error.response?.data?.data?.error
-        || error.response?.data?.msg
-        || error.message
-        || 'Failed to create worker';
-      throw new Error(errorMsg);
+      throw createApiError('project creation', error, [
+        `Project name: ${normalizedProjectName}`,
+        `Endpoint: ${apiUrl}`,
+      ]);
     }
 
     // 2. Download template from repository (using HTTPS, no git required)
@@ -176,7 +183,9 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       
       console.log(chalk.green(`   Template downloaded to: ${targetDir}`));
     } catch (error: any) {
-      throw new Error(`Failed to extract template: ${error.message}`);
+      throw createCommandError('template extraction', `unzip -o "${zipPath}" -d "${PROJECT_DIR}"`, error, [
+        'Check whether `unzip` is available and the downloaded template archive is valid.',
+      ]);
     }
 
     // 3. Update pinme.toml with worker URL
@@ -240,39 +249,34 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
     // 6. Install dependencies and build frontend
     console.log(chalk.blue('\n4. Building frontend...'));
 
-    // Install root dependencies
+    // Install workspace dependencies from the project root.
+    // The template uses npm workspaces, so a single root install is enough.
     try {
       execSync('npm install', {
         cwd: targetDir,
         stdio: 'inherit',
       });
-      console.log(chalk.green('   Root dependencies installed'));
+      console.log(chalk.green('   Project dependencies installed'));
     } catch (error: any) {
-      console.log(chalk.yellow('   Warning: Root dependencies install failed, continuing...'));
+      throw createCommandError('project dependency install', 'npm install', error, [
+        'Check network connectivity and npm registry availability.',
+        'Inspect the generated workspace `package.json` files for dependency conflicts.',
+      ]);
     }
 
-    // Install frontend dependencies
     const frontendDir = path.join(targetDir, 'frontend');
     if (fs.existsSync(frontendDir)) {
-      try {
-        execSync('npm install', {
-          cwd: frontendDir,
-          stdio: 'inherit',
-        });
-        console.log(chalk.green('   Frontend dependencies installed'));
-      } catch (error: any) {
-        console.log(chalk.yellow('   Warning: Frontend dependencies install failed, continuing...'));
-      }
-
       // Build frontend
       try {
-        execSync('npm run build', {
-          cwd: frontendDir,
+        execSync('npm run build:frontend', {
+          cwd: targetDir,
           stdio: 'inherit',
         });
         console.log(chalk.green('   Frontend built'));
       } catch (error: any) {
-        throw new Error(`Frontend build failed: ${error.message}`);
+        throw createCommandError('frontend build', 'npm run build:frontend', error, [
+          'Fix the frontend build error shown above, then rerun `pinme create`.',
+        ]);
       }
 
       // Upload to IPFS
@@ -292,7 +296,7 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       }
     }
 
-    console.log(chalk.green('\n✅ Project created successfully!'));
+    console.log(chalk.green('\nProject created successfully.'));
     console.log(chalk.gray(`\nProject Details:`));
     console.log(chalk.gray(`   API Domain: ${workerData.api_domain}`));
     console.log(chalk.gray(`   Project Name: ${workerData.project_name}`));
@@ -302,7 +306,7 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
 
     process.exit(0);
   } catch (error: any) {
-    console.error(chalk.red(`\nError: ${error.message || error}`));
+    printCliError(error, 'Project creation failed.');
     process.exit(1);
   }
 }
