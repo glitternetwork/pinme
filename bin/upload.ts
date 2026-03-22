@@ -103,6 +103,34 @@ interface UploadOptions {
   [key: string]: any;
 }
 
+function formatEnsUrl(shortUrl?: string): string {
+  if (!shortUrl) return '';
+  const normalized = shortUrl.trim();
+  if (!normalized) return '';
+  if (/^https?:\/\//.test(normalized)) return normalized;
+  if (normalized.includes('.')) return `https://${normalized}`;
+  return `https://${normalized}.pinit.eth.limo`;
+}
+
+function printUploadUrls(contentHash: string, shortUrl?: string): void {
+  const uid = getUid();
+  const encryptedCID = encryptHash(contentHash, secretKey, uid);
+  const previewUrl = `${URL}${encryptedCID}`;
+  const projectName = process.env.PINME_PROJECT_NAME?.trim();
+
+  if (projectName) {
+    const ensUrl = formatEnsUrl(shortUrl);
+    console.log(chalk.cyan(`URL:`));
+    console.log(chalk.cyan(ensUrl || previewUrl));
+    console.log(chalk.cyan(`Management page:`));
+    console.log(chalk.cyan(previewUrl));
+    return;
+  }
+
+  console.log(chalk.cyan(`URL:`));
+  console.log(chalk.cyan(previewUrl));
+}
+
 function getDomainFromArgs(): string | null {
   const args = process.argv.slice(2);
   const dIdx = args.findIndex((a) => a === '--domain' || a === '-d');
@@ -257,44 +285,47 @@ export default async (options?: UploadOptions): Promise<void> => {
       }
 
       console.log(chalk.blue(`uploading ${absolutePath} to ipfs...`));
+      let result;
       try {
-        const result = await upload(absolutePath);
-        if (result) {
-          const uid = getUid();
-          const encryptedCID = encryptHash(result.contentHash, secretKey, uid);
-          console.log(
-            chalk.cyan(
-              figlet.textSync('Successful', { horizontalLayout: 'full' }),
-            ),
-          );
-          console.log(chalk.cyan(`URL:`));
-          console.log(chalk.cyan(`${URL}${encryptedCID}`));
-
-          // optional: bind domain after upload
-          if (domainArg) {
-            console.log(
-              chalk.blue(
-                `Binding domain: ${displayDomain} with CID: ${result.contentHash}`,
-              ),
-            );
-            try {
-              await bindDomain(domainArg, result.contentHash, isDns, authConfig);
-            } catch (e: any) {
-              if (e.message === 'Token expired') {
-                process.exit(1);
-              }
-              throw e;
-            }
-          }
-          console.log(chalk.green('\n🎉 upload successful, program exit'));
-        }
+        result = await upload(absolutePath);
       } catch (error: any) {
-        console.error(chalk.red(`Error: ${error.message}`));
+        console.error(chalk.red(`Upload error: ${error.message}`));
         process.exit(1);
       }
+
+      if (!result) {
+        console.error(chalk.red('Upload failed: no result returned'));
+        process.exit(1);
+      }
+
+      console.log(
+        chalk.cyan(
+          figlet.textSync('Successful', { horizontalLayout: 'full' }),
+        ),
+      );
+      printUploadUrls(result.contentHash, result.shortUrl);
+
+      // optional: bind domain after upload
+      if (domainArg) {
+        console.log(
+          chalk.blue(
+            `Binding domain: ${displayDomain} with CID: ${result.contentHash}`,
+          ),
+        );
+        try {
+          await bindDomain(domainArg, result.contentHash, isDns, authConfig);
+        } catch (e: any) {
+          if (e.message === 'Token expired') {
+            process.exit(1);
+          }
+          throw e;
+        }
+      }
+      console.log(chalk.green('\n🎉 upload successful, program exit'));
       process.exit(0);
     }
 
+    // No path argument provided, use interactive mode
     const answer = await inquirer.prompt([
       {
         type: 'input',
@@ -362,40 +393,42 @@ export default async (options?: UploadOptions): Promise<void> => {
       }
 
       console.log(chalk.blue(`uploading ${absolutePath} to ipfs...`));
+      let result;
       try {
-        const result = await upload(absolutePath);
-
-        if (result) {
-          const uid = getUid();
-          const encryptedCID = encryptHash(result.contentHash, secretKey, uid);
-          console.log(
-            chalk.cyan(
-              figlet.textSync('Successful', { horizontalLayout: 'full' }),
-            ),
-          );
-          console.log(chalk.cyan(`URL:`));
-          console.log(chalk.cyan(`${URL}${encryptedCID}`));
-          if (domainArg) {
-            console.log(
-              chalk.blue(
-                `Binding domain: ${displayDomain} with CID: ${result.contentHash}`,
-              ),
-            );
-            try {
-              await bindDomain(domainArg, result.contentHash, isDns, authConfig);
-            } catch (e: any) {
-              if (e.message === 'Token expired') {
-                process.exit(1);
-              }
-              throw e;
-            }
-          }
-          console.log(chalk.green('\n🎉 upload successful, program exit'));
-        }
+        result = await upload(absolutePath);
       } catch (error: any) {
-        console.error(chalk.red(`Error: ${error.message}`));
+        console.error(chalk.red(`Upload error: ${error.message}`));
         process.exit(1);
       }
+
+      if (!result) {
+        console.error(chalk.red('Upload failed: no result returned'));
+        process.exit(1);
+      }
+
+      console.log(
+        chalk.cyan(
+          figlet.textSync('Successful', { horizontalLayout: 'full' }),
+        ),
+      );
+      printUploadUrls(result.contentHash, result.shortUrl);
+      if (domainArg) {
+        console.log(
+          chalk.blue(
+            `Binding domain: ${displayDomain} with CID: ${result.contentHash}`,
+          ),
+        );
+        
+        try {
+          await bindDomain(domainArg, result.contentHash, isDns, authConfig);
+        } catch (e: any) {
+          if (e.message === 'Token expired') {
+            process.exit(1);
+          }
+          throw e;
+        }
+      }
+      console.log(chalk.green('\n🎉 upload successful, program exit'));
       process.exit(0);
     }
   } catch (error: any) {

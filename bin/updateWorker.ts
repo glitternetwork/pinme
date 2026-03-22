@@ -152,8 +152,12 @@ async function updateWorker(workerJsPath: string, modulePaths: string[], metadat
       throw new Error(response.data?.errors?.[0]?.message || 'Failed to update worker');
     }
   } catch (error: any) {
-    console.log(chalk.red(`   Response status: ${error.response?.status}`));
-    console.log(chalk.red(`   Response data: ${JSON.stringify(error.response?.data)}`));
+    if (error.response) {
+      console.log(chalk.red(`   Response status: ${error.response?.status}`));
+      console.log(chalk.red(`   Response data: ${JSON.stringify(error.response?.data)}`));
+    } else {
+      console.log(chalk.red('No Response'))
+    }
     const errorMsg = error.response?.data?.errors?.[0]?.message
       || error.response?.data?.error
       || error.message

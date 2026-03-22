@@ -56,7 +56,7 @@ function buildWorker() {
 
 function installDependencies() {
   console.log(chalk.blue('Installing dependencies...'));
-  
+
   // 安装根目录依赖
   try {
     execSync('npm install', {
@@ -67,7 +67,7 @@ function installDependencies() {
   } catch (error: any) {
     throw new Error(`Root dependencies install failed: ${error.message}`);
   }
-  
+
   // 安装后端依赖
   const backendDir = path.join(PROJECT_DIR, 'backend');
   if (fs.existsSync(path.join(backendDir, 'package.json'))) {
@@ -81,7 +81,7 @@ function installDependencies() {
       throw new Error(`Backend dependencies install failed: ${error.message}`);
     }
   }
-  
+
   // 安装前端依赖
   const frontendDir = path.join(PROJECT_DIR, 'frontend');
   if (fs.existsSync(path.join(frontendDir, 'package.json'))) {
@@ -136,11 +136,11 @@ function getSqlFiles(): string[] {
 
 async function saveWorker(workerJsPath: string, modulePaths: string[], sqlFiles: string[], metadata: any, projectName: string) {
   console.log(chalk.blue('Saving worker to platform...'));
-    console.log(chalk.gray(`Project: ${projectName}`));
-    console.log(chalk.gray(`workerJsPath: ${workerJsPath}`));
-    console.log(chalk.gray(`modulePaths: ${modulePaths}`));
-    console.log(chalk.gray(`sqlFiles: ${sqlFiles}`));
-    console.log(chalk.gray(`metadata: ${metadata}`));
+  console.log(chalk.gray(`Project: ${projectName}`));
+  console.log(chalk.gray(`workerJsPath: ${workerJsPath}`));
+  console.log(chalk.gray(`modulePaths: ${modulePaths}`));
+  console.log(chalk.gray(`sqlFiles: ${sqlFiles}`));
+  console.log(chalk.gray(`metadata: ${metadata}`));
   const apiUrl = `${API_BASE}/save_worker?project_name=${encodeURIComponent(projectName)}`;
   const headers = getAuthHeaders();
   console.log(chalk.gray(`API URL: ${apiUrl}`));
@@ -192,8 +192,12 @@ async function saveWorker(workerJsPath: string, modulePaths: string[], sqlFiles:
       throw new Error(response.data?.errors?.[0]?.message || 'Failed to save worker');
     }
   } catch (error: any) {
-    console.log(chalk.red(`   Response status: ${error.response?.status}`));
-    console.log(chalk.red(`   Response data: ${JSON.stringify(error.response?.data)}`));
+    if (error.response) {
+      console.log(chalk.red(`   Response status: ${error.response?.status}`));
+      console.log(chalk.red(`   Response data: ${JSON.stringify(error.response?.data)}`));
+    } else {
+      console.log(chalk.red('No Response'))
+    }
     const errorMsg = error.response?.data?.errors?.[0]?.message
       || error.response?.data?.error
       || error.message
@@ -217,12 +221,16 @@ function buildFrontend() {
   }
 }
 
-function deployFrontend() {
+function deployFrontend(projectName: string) {
   console.log(chalk.blue('Deploying frontend to IPFS...'));
   try {
     execSync('pinme upload ./frontend/dist', {
       cwd: PROJECT_DIR,
       stdio: 'inherit',
+      env: {
+        ...process.env,
+        PINME_PROJECT_NAME: projectName,
+      },
     });
     console.log(chalk.green('Frontend deployed to IPFS'));
   } catch (error: any) {
@@ -285,7 +293,7 @@ export default async function saveCmd(options: SaveOptions): Promise<void> {
     // Frontend: build + deploy
     console.log(chalk.blue('\n--- Frontend ---'));
     buildFrontend();
-    deployFrontend();
+    deployFrontend(projectName);
 
     console.log(chalk.green('\n✅ Deployment complete!'));
     process.exit(0);

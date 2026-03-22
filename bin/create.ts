@@ -281,6 +281,10 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
         execSync('pinme upload ./dist', {
           cwd: frontendDir,
           stdio: 'inherit',
+          env: {
+            ...process.env,
+            PINME_PROJECT_NAME: workerData.project_name,
+          },
         });
         console.log(chalk.green('   Frontend uploaded to IPFS'));
       } catch (error: any) {
@@ -294,7 +298,7 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
     console.log(chalk.gray(`   Project Name: ${workerData.project_name}`));
     console.log(chalk.gray(`\nNext steps:`));
     console.log(chalk.gray(`   cd ${projectName}`));
-    console.log(chalk.gray(`   pinme save  # 首次部署后端 + 前端`));
+    console.log(chalk.gray(`   pinme save`));
 
     process.exit(0);
   } catch (error: any) {

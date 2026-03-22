@@ -61,6 +61,7 @@ interface UploadStatusResponse {
       ShortUrl: string;
     };
     is_ready: boolean;
+    domain?: string;
   };
 }
 
@@ -74,10 +75,21 @@ async function pollUploadStatus(
   let consecutiveErrors = 0;
   let stopProgressUpdates = false;
 
+  const projectName = process.env.PINME_PROJECT_NAME?.trim();
   while (Date.now() - startTime < maxPollTime) {
     try {
+      // Build query params
+      const queryParams = new URLSearchParams({
+        trace_id: traceId,
+        uid: deviceId,
+      });
+      if (projectName) {
+        queryParams.append('project_name', projectName);
+        console.log(chalk.gray(`[up_status] project_name: ${projectName}`));
+      }
+      
       const response = await axios.get<UploadStatusResponse>(
-        `${ipfsApiUrl}/up_status?trace_id=${traceId}&uid=${deviceId}`,
+        `${ipfsApiUrl}/up_status?${queryParams.toString()}`,
         {
           timeout: pollTimeout,
           headers: {
@@ -399,6 +411,10 @@ async function uploadDirectory(
     const directoryItem = uploadResult.upload_rst;
     if (directoryItem) {
       const fileCount = countFilesInDirectory(directoryPath);
+      // Use domain from backend to construct full URL
+      const shortUrl = directoryItem.ShortUrl;
+      const domain = uploadResult.domain;
+      const fullShortUrl = shortUrl && domain ? `${shortUrl}.${domain}` : shortUrl;
       const uploadData = {
         path: directoryPath,
         filename: path.basename(directoryPath),
@@ -407,14 +423,14 @@ async function uploadDirectory(
         size: sizeCheck.size,
         fileCount: fileCount,
         isDirectory: true,
-        shortUrl: directoryItem.ShortUrl || null,
+        shortUrl: fullShortUrl || null,
       };
       saveUploadHistory(uploadData);
 
       clearInterval(timeInterval);
       return {
         hash: directoryItem.Hash,
-        shortUrl: directoryItem.ShortUrl,
+        shortUrl: fullShortUrl,
       };
     }
 
@@ -585,6 +601,10 @@ async function uploadFile(
 
     const fileItem = uploadResult.upload_rst;
     if (fileItem) {
+      // Use domain from backend to construct full URL
+      const shortUrl = fileItem.ShortUrl;
+      const domain = uploadResult.domain;
+      const fullShortUrl = shortUrl && domain ? `${shortUrl}.${domain}` : shortUrl;
       const uploadData = {
         path: filePath,
         filename: fileName,
@@ -593,7 +613,7 @@ async function uploadFile(
         size: sizeCheck.size,
         fileCount: 1,
         isDirectory: false,
-        shortUrl: fileItem.ShortUrl || null,
+        shortUrl: fullShortUrl || null,
       };
       saveUploadHistory(uploadData);
 
@@ -602,7 +622,7 @@ async function uploadFile(
 
       return {
         hash: fileItem.Hash,
-        shortUrl: fileItem.ShortUrl,
+        shortUrl: fullShortUrl,
       };
     }
 
