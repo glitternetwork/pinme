@@ -10,7 +10,7 @@
     "module": "ESNext",
     "moduleResolution": "Node",
     "resolveJsonModule": true,
-    "types": ["node"],
+    "types": ["node", "jest"],
     "outDir": "dist",
     "declaration": true,
     "baseUrl": ".",
