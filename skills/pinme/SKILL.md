@@ -57,7 +57,7 @@ pinme upload <path>
 pinme upload ./dist --domain my-site  # 可选：绑定子域名（需 VIP）
 ```
 
-**4. 返回**预览 URL（`https://pinme.eth.limo/#/preview/*`）给用户。
+**4. 返回**预览 URL（`https://pinme.eth.limo/#/preview/*`）给用户。注意：返回 **完整的 URL**，包含全部 hash 字符，不要截断。
 
 ### 常见示例
 
@@ -166,7 +166,7 @@ pinme save
 # 输出预览 URL：https://pinme.eth.limo/#/preview/{CID}
 ```
 
-**返回**预览 URL 给用户。
+**返回**预览 URL 给用户。注意：返回 **完整的 URL**，包含全部 hash 字符，不要截断。
 
 后端 Worker 部署在 `https://{name}.pinme.pro`。前端 API 请求会自动配置指向该地址 — 无需手动设置。
 
