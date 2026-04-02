@@ -16,16 +16,17 @@ Worker 创建时自动注入以下环境变量，无需手动配置：
 export interface Env {
   DB: D1Database;
   API_KEY: string;      // 项目 API Key — 用于 send_email 和 chat/completions 认证
+  BASE_URL?: string;    // 可选覆盖 PinMe API 基础地址，默认 https://pinme.dev
 }
 ```
 
-> `API_KEY` 是 Worker 调用 PinMe 平台 API 的唯一凭证。
+> `API_KEY` 是 Worker 调用 PinMe 平台 API 的唯一凭证。`BASE_URL` 未设置时默认使用 `https://pinme.dev`。
 
 ---
 
 ## API 1：发送邮件
 
-**端点：** `POST https://pinme.dev/api/v4/send_email`
+**端点：** `POST {BASE_URL}/api/v4/send_email`
 **认证：** `X-API-Key` header（使用 `env.API_KEY`）
 **发件人：** 自动为 `{project_name}@pinme.dev`
 
@@ -64,7 +65,8 @@ export interface Env {
 
 ```typescript
 async function sendEmail(env: Env, to: string, subject: string, html: string): Promise<{ ok: boolean; error?: string }> {
-  const resp = await fetch('https://pinme.dev/api/v4/send_email', {
+  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const resp = await fetch(`${baseUrl}/api/v4/send_email`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -100,7 +102,7 @@ async function handleSendVerification(request: Request, env: Env): Promise<Respo
 
 ## API 2：LLM Chat Completions
 
-**端点：** `POST https://pinme.dev/api/v1/chat/completions?project_name={project_name}`
+**端点：** `POST {BASE_URL}/api/v1/chat/completions?project_name={project_name}`
 **认证：** `X-API-Key` header（使用 `env.API_KEY`）
 **请求体：** OpenAI 兼容格式，原样透传给 LLM 服务
 **流式：** 支持 SSE（`stream: true`）
@@ -162,8 +164,9 @@ async function callLLM(
   messages: Array<{ role: string; content: string }>,
   model = 'openai/gpt-4o-mini',
 ): Promise<{ content: string; error?: string }> {
+  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
   const resp = await fetch(
-    `https://pinme.dev/api/v1/chat/completions?project_name=${projectName}`,
+    `${baseUrl}/api/v1/chat/completions?project_name=${projectName}`,
     {
       method: 'POST',
       headers: {
@@ -206,13 +209,14 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
 async function handleChatStream(request: Request, env: Env): Promise<Response> {
   const body = await request.text();
   const projectName = getProjectName(request);
+  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
 
   // 确保请求中 stream=true
   let parsed = JSON.parse(body);
   parsed.stream = true;
 
   const resp = await fetch(
-    `https://pinme.dev/api/v1/chat/completions?project_name=${projectName}`,
+    `${baseUrl}/api/v1/chat/completions?project_name=${projectName}`,
     {
       method: 'POST',
       headers: {
@@ -329,16 +333,18 @@ async function callPinmeAPI<T>(url: string, apiKey: string, body: unknown): Prom
 ### 使用示例
 
 ```typescript
+const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+
 // 发邮件
 const emailResult = await callPinmeAPI<{ ok: boolean }>(
-  'https://pinme.dev/api/v4/send_email', env.API_KEY,
+  `${baseUrl}/api/v4/send_email`, env.API_KEY,
   { to: 'user@example.com', subject: 'Hello', html: '<p>Hi</p>' },
 );
 if (emailResult.error) return json({ error: emailResult.error }, 500);
 
 // 调 LLM（非流式）
 const llmResult = await callPinmeAPI<{ choices: Array<{ message: { content: string } }> }>(
-  `https://pinme.dev/api/v1/chat/completions?project_name=${projectName}`, env.API_KEY,
+  `${baseUrl}/api/v1/chat/completions?project_name=${projectName}`, env.API_KEY,
   { model: 'openai/gpt-4o-mini', messages: [{ role: 'user', content: 'Hi' }] },
 );
 if (llmResult.error) return json({ error: llmResult.error }, 502);
