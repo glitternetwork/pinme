@@ -20,6 +20,17 @@ import logoutCmd from './logout';
 import showAppKeyCmd from './show-appkey';
 import myDomainsCmd from './my-domains';
 import bindCmd from './bind';
+import loginCmd, { EnvOption } from './login';
+import createCmd from './create';
+import saveCmd from './save';
+import updateDbCmd from './updateDb';
+import updateWorkerCmd from './updateWorker';
+import updateWebCmd from './updateWeb';
+import deleteCmd from './delete';
+
+interface SaveOptions {
+  name?: string;
+}
 
 // display the ASCII art logo
 function showBanner(): void {
@@ -63,9 +74,15 @@ program
   .action(() => remove());
 
 program
+  .command('login')
+  .description('Login via browser (opens web login page)')
+  .option('-e, --env <env>', 'Environment: test, prod')
+  .action((options: EnvOption) => loginCmd(options));
+
+program
   .command('set-appkey')
   .description(
-    'Set AppKey for authentication, and auto-merge anonymous history',
+    'Set AppKey for authentication (alternative to login command)',
   )
   .action(() => setAppKeyCmd());
 
@@ -92,6 +109,40 @@ program
   .option('-d, --domain <name>', 'Domain name to bind')
   .option('--dns', 'Force DNS domain mode')
   .action(() => bindCmd());
+
+program
+  .command('create')
+  .description('Create a new project from template')
+  .argument('[name]', 'Project name')
+  .option('-f, --force', 'Overwrite if exists')
+  .action((name: string | undefined, options: { force?: boolean }) => createCmd({ name, force: options?.force }));
+
+program
+  .command('save')
+  .description('Deploy the project (frontend + backend)')
+  .action((options: { name?: string }) => saveCmd(options));
+
+program
+  .command('update-db')
+  .description('Execute database migration')
+  .action(() => updateDbCmd());
+
+program
+  .command('update-worker')
+  .description('Execute worker migration')
+  .action(() => updateWorkerCmd());
+
+program
+  .command('update-web')
+  .description('Deploy frontend to IPFS')
+  .action((options: { name?: string }) => updateWebCmd(options));
+
+program
+  .command('delete')
+  .description('Delete a project (Worker, domain, D1 database)')
+  .argument('[name]', 'Project name')
+  .option('-f, --force', 'Skip confirmation')
+  .action((name: string | undefined, options: { force?: boolean }) => deleteCmd({ name, force: options?.force }));
 
 program
   .command('domain')
@@ -152,6 +203,7 @@ program.on('--help', () => {
   console.log('  $ pinme import <path> --domain <name>');
   console.log('  $ pinme export <cid> --output <path>');
   console.log('  $ pinme rm <hash>');
+  console.log('  $ pinme login');
   console.log('  $ pinme set-appkey <AppKey>');
   console.log('  $ pinme show-appkey');
   console.log('  $ pinme logout');

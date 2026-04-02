@@ -6,7 +6,7 @@ import upload from './utils/uploadToIpfsSplit';
 import fs from 'fs';
 import CryptoJS from 'crypto-js';
 import { checkDomainAvailable, bindPinmeDomain } from './utils/pinmeApi';
-import { getAuthConfig } from './utils/auth';
+import { getAuthConfig } from './utils/webLogin';
 import { getDeviceId } from './utils/getDeviceId';
 // get from environment variables
 const URL = process.env.IPFS_PREVIEW_URL;

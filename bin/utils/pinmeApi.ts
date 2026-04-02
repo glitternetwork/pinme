@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import chalk from 'chalk';
-import { getAuthHeaders } from './auth';
+import { getAuthHeaders } from './webLogin';
 
 const DEFAULT_BASE =
   process.env.PINME_API_BASE || 'http://ipfs-proxy.opena.chat/api/v4';
@@ -254,7 +254,7 @@ export async function isVip(
 // CAR Export API
 const CAR_API_BASE =
   process.env.CAR_API_BASE ||
-  process.env.PINME_API_BASE ||
+  process.env.IPFS_API_URL ||
   'http://ipfs-proxy.opena.chat/api/v3';
 
 function createCarClient(): AxiosInstance {

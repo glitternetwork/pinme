@@ -21,9 +21,10 @@ function showGeneralHelp(): void {
   console.log("COMMANDS:");
   console.log("  upload              Upload a file or directory to IPFS");
   console.log("  bind                Upload and bind to a domain (requires VIP)");
+  console.log("  login               Login via browser (recommended)");
   console.log("  list                Show upload history");
   console.log("  ls                  Alias for 'list' command");
-  console.log("  set-appkey          Set AppKey for authentication");
+  console.log("  set-appkey          Set AppKey for authentication (alternative)");
   console.log("  show-appkey         Show current AppKey information (masked)");
   console.log("  appkey              Alias for 'show-appkey' command");
   console.log("  logout              Log out and clear authentication");
@@ -118,12 +119,39 @@ function showUploadHelp(): void {
 
   console.log("REQUIREMENTS:");
   console.log("  - VIP membership required for domain binding");
-  console.log("  - Valid AppKey must be set (run: pinme set-appkey <AppKey>)");
+  console.log("  - Valid AppKey must be set (run: pinme login)");
   console.log("  - For DNS domains, you must own the domain\n");
 
   console.log("LIMITATIONS:");
   console.log("  - Maximum file size: 10MB");
   console.log("  - Maximum directory size: 500MB");
+}
+
+// login command help
+function showLoginHelp(): void {
+  console.log("COMMAND:");
+  console.log("  login - Login via browser (recommended)\n");
+
+  console.log("USAGE:");
+  console.log("  pinme login\n");
+
+  console.log("DESCRIPTION:");
+  console.log("  This command opens the PinMe website in your browser for authentication.");
+  console.log("  After logging in, your token will be automatically saved.\n");
+
+  console.log("EXAMPLES:");
+  console.log("  pinme login\n");
+
+  console.log("HOW IT WORKS:");
+  console.log("  1. CLI starts a local server");
+  console.log("  2. Opens browser to PinMe login page");
+  console.log("  3. User logs in on the website");
+  console.log("  4. Website redirects back to CLI with token");
+  console.log("  5. Token is saved locally\n");
+
+  console.log("NOTE:");
+  console.log("  - If you prefer manual input, use: pinme set-appkey <AppKey>");
+  console.log("  - Get your AppKey from: https://pinme.eth.limo/\n");
 }
 
 // list command help
@@ -210,6 +238,9 @@ function showHelp(command?: string): void {
       break;
     case 'upload':
       showUploadHelp();
+      break;
+    case 'login':
+      showLoginHelp();
       break;
     case 'list':
       showListHelp();

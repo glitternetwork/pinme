@@ -34,7 +34,7 @@ function isValidSubname(subname: string): boolean {
 function parseInput(input: string): { type: 'hash' | 'subname'; value: string } | null {
   const trimmedInput = input.trim();
   
-  // Case 1: Full URL with hash - https://bafybeigthbkdv2ufll47r7e7f5z4c3vubyggxwotl52parmy3d3abt6ztu.pinme.dev
+  // Case 1: Full URL with hash - https://bafybeigthbkdv2ufll47r7e7f5z4c3vubyggxwotl52parmy3d3abt6ztu.pinme.eth.limo
   const hashUrlPattern = /https?:\/\/([a-z0-9]{50,})\.pinme\.dev/i;
   const hashUrlMatch = trimmedInput.match(hashUrlPattern);
   if (hashUrlMatch) {

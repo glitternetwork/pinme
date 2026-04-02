@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import inquirer from 'inquirer';
 import upload from './utils/uploadToIpfsSplit';
 import { checkDomainAvailable, bindPinmeDomain, bindDnsDomainV4, isVip } from './utils/pinmeApi';
-import { getAuthConfig } from './utils/auth';
+import { getAuthConfig } from './utils/webLogin';
 
 interface Args {
   domain?: string;
@@ -121,7 +121,6 @@ export default async function bindCmd(): Promise<void> {
 
     // Auto-detect domain type if not explicitly specified
     const isDns = dns || isDnsDomain(domain);
-    console.log(isDns,'isDns')
     const displayDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
     // Validate DNS domain format
