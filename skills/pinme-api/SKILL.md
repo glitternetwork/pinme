@@ -1,36 +1,36 @@
 ---
 name: pinme-api
-description: 当用户的 PinMe 项目（Worker TypeScript）需要集成发送邮件（send_email）或调用大模型 API（chat/completions）时使用此技能。指导 AI 生成正确的 Worker TS 代码。
+description: Use this skill when a PinMe project (Worker TypeScript) needs to integrate email sending (send_email) or LLM API calls (chat/completions). Guides AI to generate correct Worker TS code.
 ---
 
-# PinMe Worker API 集成
+# PinMe Worker API Integration
 
-指导在 PinMe Worker（TypeScript）中调用 PinMe 平台的邮件发送和 LLM API。
+Guides how to call PinMe platform's email sending and LLM APIs in a PinMe Worker (TypeScript).
 
-## 环境变量
+## Environment Variables
 
-Worker 创建时自动注入以下环境变量，无需手动配置：
+The following environment variables are automatically injected when the Worker is created — no manual configuration needed:
 
 ```typescript
 // backend/src/worker.ts
 export interface Env {
   DB: D1Database;
-  API_KEY: string;      // 项目 API Key — 用于 send_email 和 chat/completions 认证
-  BASE_URL?: string;    // 可选覆盖 PinMe API 基础地址，默认 https://pinme.dev
+  API_KEY: string;      // Project API Key — used for send_email and chat/completions authentication
+  BASE_URL?: string;    // Optional override for PinMe API base URL, defaults to https://pinme.dev
 }
 ```
 
-> `API_KEY` 是 Worker 调用 PinMe 平台 API 的唯一凭证。`BASE_URL` 未设置时默认使用 `https://pinme.dev`。
+> `API_KEY` is the sole credential for the Worker to call PinMe platform APIs. When `BASE_URL` is not set, it defaults to `https://pinme.dev`.
 
 ---
 
-## API 1：发送邮件
+## API 1: Send Email
 
-**端点：** `POST {BASE_URL}/api/v4/send_email`
-**认证：** `X-API-Key` header（使用 `env.API_KEY`）
-**发件人：** 自动为 `{project_name}@pinme.dev`
+**Endpoint:** `POST {BASE_URL}/api/v4/send_email`
+**Authentication:** `X-API-Key` header (using `env.API_KEY`)
+**Sender:** Automatically set to `{project_name}@pinme.dev`
 
-### 请求格式
+### Request Format
 
 ```json
 {
@@ -40,28 +40,28 @@ export interface Env {
 }
 ```
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `to` | string | 是 | 收件人邮箱 |
-| `subject` | string | 是 | 邮件主题 |
-| `html` | string | 是 | HTML 正文 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `to` | string | Yes | Recipient email address |
+| `subject` | string | Yes | Email subject |
+| `html` | string | Yes | HTML body |
 
-### 响应格式
+### Response Format
 
-**成功 (200)：**
+**Success (200):**
 ```json
 { "code": 200, "msg": "ok", "data": { "ok": true } }
 ```
 
-**错误：**
+**Errors:**
 
-| HTTP 状态码 | 含义 | data.error 示例 |
-|-------------|------|-----------------|
-| 401 | API Key 缺失或无效 | `"X-API-Key header is required"` / `"Invalid API key"` |
-| 400 | 参数校验失败 | `"Invalid email address"` / `"Subject is required"` |
-| 500 | 邮件服务异常 | `"Failed to send email"` |
+| HTTP Status | Meaning | data.error Example |
+|-------------|---------|-------------------|
+| 401 | API Key missing or invalid | `"X-API-Key header is required"` / `"Invalid API key"` |
+| 400 | Parameter validation failed | `"Invalid email address"` / `"Subject is required"` |
+| 500 | Email service error | `"Failed to send email"` |
 
-### Worker 示例代码
+### Worker Example Code
 
 ```typescript
 async function sendEmail(env: Env, to: string, subject: string, html: string): Promise<{ ok: boolean; error?: string }> {
@@ -83,7 +83,7 @@ async function sendEmail(env: Env, to: string, subject: string, html: string): P
   return { ok: true };
 }
 
-// 在路由中使用
+// Usage in routes
 async function handleSendVerification(request: Request, env: Env): Promise<Response> {
   const { email } = await request.json() as { email: string };
   const code = Math.random().toString().slice(2, 8);
@@ -100,14 +100,14 @@ async function handleSendVerification(request: Request, env: Env): Promise<Respo
 
 ---
 
-## API 2：LLM Chat Completions
+## API 2: LLM Chat Completions
 
-**端点：** `POST {BASE_URL}/api/v1/chat/completions?project_name={project_name}`
-**认证：** `X-API-Key` header（使用 `env.API_KEY`）
-**请求体：** OpenAI 兼容格式，原样透传给 LLM 服务
-**流式：** 支持 SSE（`stream: true`）
+**Endpoint:** `POST {BASE_URL}/api/v1/chat/completions?project_name={project_name}`
+**Authentication:** `X-API-Key` header (using `env.API_KEY`)
+**Request Body:** OpenAI-compatible format, passed through to LLM service as-is
+**Streaming:** Supports SSE (`stream: true`)
 
-### 请求格式
+### Request Format
 
 ```json
 {
@@ -120,11 +120,11 @@ async function handleSendVerification(request: Request, env: Env): Promise<Respo
 }
 ```
 
-> `project_name` 从 Worker 的子域名解析，见下方示例。模型列表参考 [PinMe LLM 支持的模型](https://openrouter.ai/models)（OpenAI 兼容格式）。
+> `project_name` is parsed from the Worker's subdomain — see example below. For available models, refer to [PinMe LLM Supported Models](https://openrouter.ai/models) (OpenAI-compatible format).
 
-### 响应格式
+### Response Format
 
-**非流式成功 (200)：**
+**Non-streaming Success (200):**
 ```json
 {
   "id": "chatcmpl-...",
@@ -133,26 +133,26 @@ async function handleSendVerification(request: Request, env: Env): Promise<Respo
 }
 ```
 
-**流式成功 (200)：** SSE 格式
+**Streaming Success (200):** SSE format
 ```
 data: {"choices":[{"delta":{"content":"Hello"}}]}
 data: {"choices":[{"delta":{"content":" there"}}]}
 data: [DONE]
 ```
 
-**错误：**
+**Errors:**
 
-| HTTP 状态码 | 含义 | data.error 示例 |
-|-------------|------|-----------------|
-| 401 | API Key 缺失或无效 | `"X-API-Key header is required"` / `"Invalid API key or project name"` |
-| 400 | project_name 缺失或 LLM 未配置 | `"project_name is required"` / `"LLM service not configured for this project"` |
-| 413 | 请求体超过 1MB | `"Request body too large (max 1MB)"` |
-| 502 | LLM 服务不可用 | `"LLM service unavailable"` |
+| HTTP Status | Meaning | data.error Example |
+|-------------|---------|-------------------|
+| 401 | API Key missing or invalid | `"X-API-Key header is required"` / `"Invalid API key or project name"` |
+| 400 | project_name missing or LLM not configured | `"project_name is required"` / `"LLM service not configured for this project"` |
+| 413 | Request body exceeds 1MB | `"Request body too large (max 1MB)"` |
+| 502 | LLM service unavailable | `"LLM service unavailable"` |
 
-### Worker 示例代码 — 非流式
+### Worker Example Code — Non-streaming
 
 ```typescript
-// 获取 project_name：从 Worker 的子域名解析
+// Get project_name: parsed from the Worker's subdomain
 function getProjectName(request: Request): string {
   const host = new URL(request.url).hostname; // e.g. "my-app-1a2b.pinme.pro"
   return host.split('.')[0];
@@ -186,7 +186,7 @@ async function callLLM(
   return { content: data.choices[0]?.message?.content || '' };
 }
 
-// 在路由中使用
+// Usage in routes
 async function handleChat(request: Request, env: Env): Promise<Response> {
   const { question } = await request.json() as { question: string };
   const projectName = getProjectName(request);
@@ -203,7 +203,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
 }
 ```
 
-### Worker 示例代码 — 流式（SSE 透传）
+### Worker Example Code — Streaming (SSE Passthrough)
 
 ```typescript
 async function handleChatStream(request: Request, env: Env): Promise<Response> {
@@ -211,7 +211,7 @@ async function handleChatStream(request: Request, env: Env): Promise<Response> {
   const projectName = getProjectName(request);
   const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
 
-  // 确保请求中 stream=true
+  // Ensure stream=true in the request
   let parsed = JSON.parse(body);
   parsed.stream = true;
 
@@ -232,7 +232,7 @@ async function handleChatStream(request: Request, env: Env): Promise<Response> {
     return json({ error: err.data?.error || `HTTP ${resp.status}` }, resp.status);
   }
 
-  // 直接透传 SSE 流
+  // Pass through SSE stream directly
   return new Response(resp.body, {
     status: 200,
     headers: {
@@ -245,7 +245,7 @@ async function handleChatStream(request: Request, env: Env): Promise<Response> {
 }
 ```
 
-### 前端消费 SSE 流示例
+### Frontend SSE Stream Consumer Example
 
 ```typescript
 async function streamChat(question: string, onChunk: (text: string) => void): Promise<void> {
@@ -265,7 +265,7 @@ async function streamChat(question: string, onChunk: (text: string) => void): Pr
 
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
-    buffer = lines.pop()!; // 保留不完整的行
+    buffer = lines.pop()!; // Keep incomplete line
 
     for (const line of lines) {
       if (!line.startsWith('data: ')) continue;
@@ -282,19 +282,19 @@ async function streamChat(question: string, onChunk: (text: string) => void): Pr
 
 ---
 
-## 错误处理模式
+## Error Handling Patterns
 
-PinMe 平台 API 统一响应格式：
+PinMe platform API unified response format:
 
 ```typescript
 interface PinmeResponse<T = unknown> {
-  code: number;   // 200=成功，其他=失败
+  code: number;   // 200=success, other=failure
   msg: string;    // "ok" | "error" | "invalid params"
-  data?: T;       // 成功时为业务数据，失败时可能含 { error: string }
+  data?: T;       // Business data on success, may contain { error: string } on failure
 }
 ```
 
-### 推荐的统一错误处理
+### Recommended Unified Error Handler
 
 ```typescript
 async function callPinmeAPI<T>(url: string, apiKey: string, body: unknown): Promise<{ data?: T; error?: string }> {
@@ -330,19 +330,19 @@ async function callPinmeAPI<T>(url: string, apiKey: string, body: unknown): Prom
 }
 ```
 
-### 使用示例
+### Usage Examples
 
 ```typescript
 const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
 
-// 发邮件
+// Send email
 const emailResult = await callPinmeAPI<{ ok: boolean }>(
   `${baseUrl}/api/v4/send_email`, env.API_KEY,
   { to: 'user@example.com', subject: 'Hello', html: '<p>Hi</p>' },
 );
 if (emailResult.error) return json({ error: emailResult.error }, 500);
 
-// 调 LLM（非流式）
+// Call LLM (non-streaming)
 const llmResult = await callPinmeAPI<{ choices: Array<{ message: { content: string } }> }>(
   `${baseUrl}/api/v1/chat/completions?project_name=${projectName}`, env.API_KEY,
   { model: 'openai/gpt-4o-mini', messages: [{ role: 'user', content: 'Hi' }] },
