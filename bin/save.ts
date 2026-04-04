@@ -79,9 +79,47 @@ function installDependencies() {
     });
     console.log(chalk.green('Project dependencies installed'));
   } catch (error: any) {
+    const errorMsg = error.message || '';
+    
+    // Check for common permission errors
+    if (errorMsg.includes('EACCES') || errorMsg.includes('EPERM') || errorMsg.includes('permission denied')) {
+      throw createCommandError('project dependency install', 'npm install', error, [
+        'Permission error detected. Here are some solutions:',
+        '',
+        'Option 1: Fix npm permissions (Recommended)',
+        '  mkdir -p ~/.npm-global',
+        '  npm config set prefix ~/.npm-global',
+        '  Then add ~/.npm-global/bin to your PATH in ~/.bashrc or ~/.zshrc',
+        '',
+        'Option 2: Use npx to avoid global installs',
+        '  npx npm install',
+        '',
+        'Option 3: Check if you have write permissions',
+        '  ls -la ' + PROJECT_DIR,
+        '',
+        'For more help: https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally',
+      ]);
+    }
+    
+    // Check for network errors
+    if (errorMsg.includes('ENOTFOUND') || errorMsg.includes('ETIMEDOUT') || errorMsg.includes('network')) {
+      throw createCommandError('project dependency install', 'npm install', error, [
+        'Network error detected. Please check:',
+        '  1. Internet connection is available',
+        '  2. npm registry is accessible (https://registry.npmjs.org)',
+        '  3. Try using a mirror: npm config set registry https://registry.npmmirror.com',
+      ]);
+    }
+    
+    // Generic error
     throw createCommandError('project dependency install', 'npm install', error, [
+      'Dependency installation failed.',
       'Check network connectivity and npm registry availability.',
       'If `package-lock.json` is stale or conflicted, resolve that before retrying.',
+      '',
+      'If this is a permission issue, try:',
+      '  sudo chown -R $(whoami) ~/.npm',
+      '  sudo chown -R $(whoami) ' + PROJECT_DIR + '/node_modules',
     ]);
   }
 }
@@ -219,15 +257,44 @@ function buildFrontend() {
 function deployFrontend(projectName: string) {
   console.log(chalk.blue('Deploying frontend to IPFS...'));
   try {
-    execSync('pinme upload ./frontend/dist', {
+    const uploadOutput = execSync('pinme upload ./frontend/dist', {
       cwd: PROJECT_DIR,
-      stdio: 'inherit',
+      encoding: 'utf-8',
       env: {
         ...process.env,
         PINME_PROJECT_NAME: projectName,
       },
     });
-    console.log(chalk.green('Frontend deployed to IPFS'));
+    console.log(uploadOutput);
+    
+    // Extract URL from output (format: https://xxx.pinme.dev)
+    const urlMatch = uploadOutput.match(/https:\/\/[\w-]+\.pinme\.dev/);
+    if (urlMatch) {
+      const frontendUrl = urlMatch[0];
+      console.log(chalk.green(`Frontend deployed to IPFS: ${frontendUrl}`));
+      
+      // Update pinme.toml with frontend URL
+      const configPath = path.join(PROJECT_DIR, 'pinme.toml');
+      let config = fs.readFileSync(configPath, 'utf-8');
+      
+      // Add or update frontend_url
+      if (config.includes('frontend_url')) {
+        config = config.replace(
+          /frontend_url\s*=\s*"[^"]*"/,
+          `frontend_url = "${frontendUrl}"`
+        );
+      } else {
+        // Add frontend_url after project_name
+        config = config.replace(
+          /(project_name\s*=\s*"[^"]*"\n)/,
+          `$1frontend_url = "${frontendUrl}"\n`
+        );
+      }
+      fs.writeFileSync(configPath, config);
+      console.log(chalk.green('Updated pinme.toml with frontend URL'));
+    } else {
+      console.log(chalk.green('Frontend deployed to IPFS'));
+    }
   } catch (error: any) {
     throw createCommandError('frontend deploy', 'pinme upload ./frontend/dist', error, [
       'Make sure `frontend/dist` exists and `pinme upload` works in this environment.',
