@@ -285,45 +285,47 @@ export default async (options?: UploadOptions): Promise<void> => {
       }
 
       console.log(chalk.blue(`uploading ${absolutePath} to ipfs...`));
+      let result;
       try {
-        const result = await upload(absolutePath);
-        if (!result) {
-          throw new Error('Upload failed without a result');
-        }
-
-        if (result) {
-          console.log(
-            chalk.cyan(
-              figlet.textSync('Successful', { horizontalLayout: 'full' }),
-            ),
-          );
-          printUploadUrls(result.contentHash, result.shortUrl);
-
-          // optional: bind domain after upload
-          if (domainArg) {
-            console.log(
-              chalk.blue(
-                `Binding domain: ${displayDomain} with CID: ${result.contentHash}`,
-              ),
-            );
-            try {
-              await bindDomain(domainArg, result.contentHash, isDns, authConfig);
-            } catch (e: any) {
-              if (e.message === 'Token expired') {
-                process.exit(1);
-              }
-              throw e;
-            }
-          }
-          console.log(chalk.green('\n🎉 upload successful, program exit'));
-        }
+        result = await upload(absolutePath);
       } catch (error: any) {
-        console.error(chalk.red(`Error: ${error.message}`));
+        console.error(chalk.red(`Upload error: ${error.message}`));
         process.exit(1);
       }
+
+      if (!result) {
+        console.error(chalk.red('Upload failed: no result returned'));
+        process.exit(1);
+      }
+
+      console.log(
+        chalk.cyan(
+          figlet.textSync('Successful', { horizontalLayout: 'full' }),
+        ),
+      );
+      printUploadUrls(result.contentHash, result.shortUrl);
+
+      // optional: bind domain after upload
+      if (domainArg) {
+        console.log(
+          chalk.blue(
+            `Binding domain: ${displayDomain} with CID: ${result.contentHash}`,
+          ),
+        );
+        try {
+          await bindDomain(domainArg, result.contentHash, isDns, authConfig);
+        } catch (e: any) {
+          if (e.message === 'Token expired') {
+            process.exit(1);
+          }
+          throw e;
+        }
+      }
+      console.log(chalk.green('\n🎉 upload successful, program exit'));
       process.exit(0);
     }
 
+    // No path argument provided, use interactive mode
     const answer = await inquirer.prompt([
       {
         type: 'input',
@@ -391,40 +393,42 @@ export default async (options?: UploadOptions): Promise<void> => {
       }
 
       console.log(chalk.blue(`uploading ${absolutePath} to ipfs...`));
+      let result;
       try {
-        const result = await upload(absolutePath);
-        if (!result) {
-          throw new Error('Upload failed without a result');
-        }
-
-        if (result) {
-          console.log(
-            chalk.cyan(
-              figlet.textSync('Successful', { horizontalLayout: 'full' }),
-            ),
-          );
-          printUploadUrls(result.contentHash, result.shortUrl);
-          if (domainArg) {
-            console.log(
-              chalk.blue(
-                `Binding domain: ${displayDomain} with CID: ${result.contentHash}`,
-              ),
-            );
-            try {
-              await bindDomain(domainArg, result.contentHash, isDns, authConfig);
-            } catch (e: any) {
-              if (e.message === 'Token expired') {
-                process.exit(1);
-              }
-              throw e;
-            }
-          }
-          console.log(chalk.green('\n🎉 upload successful, program exit'));
-        }
+        result = await upload(absolutePath);
       } catch (error: any) {
-        console.error(chalk.red(`Error: ${error.message}`));
+        console.error(chalk.red(`Upload error: ${error.message}`));
         process.exit(1);
       }
+
+      if (!result) {
+        console.error(chalk.red('Upload failed: no result returned'));
+        process.exit(1);
+      }
+
+      console.log(
+        chalk.cyan(
+          figlet.textSync('Successful', { horizontalLayout: 'full' }),
+        ),
+      );
+      printUploadUrls(result.contentHash, result.shortUrl);
+      if (domainArg) {
+        console.log(
+          chalk.blue(
+            `Binding domain: ${displayDomain} with CID: ${result.contentHash}`,
+          ),
+        );
+        
+        try {
+          await bindDomain(domainArg, result.contentHash, isDns, authConfig);
+        } catch (e: any) {
+          if (e.message === 'Token expired') {
+            process.exit(1);
+          }
+          throw e;
+        }
+      }
+      console.log(chalk.green('\n🎉 upload successful, program exit'));
       process.exit(0);
     }
   } catch (error: any) {

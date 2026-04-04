@@ -15,16 +15,6 @@ const ENV_URLS: Record<string, string> = {
 
 export default async function loginCmd(options: EnvOption = {}): Promise<void> {
   try {
-    // Check if already logged in
-    const existingAuth = getAuthConfig();
-    if (existingAuth) {
-      console.log(chalk.yellow('Already logged in'));
-      console.log(chalk.gray(`   Address: ${existingAuth.address}`));
-      console.log(chalk.gray('   To re-login, please run: pinme logout\n'));
-      process.exit(0);
-      return;
-    }
-
     // Determine web base URL based on env
     let webBaseUrl: string | undefined;
     // 默认使用 prod 环境

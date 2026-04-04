@@ -231,8 +231,8 @@ pinme upload /path/to/file-or-directory
 
 ```bash
 # Upload and bind to a domain (auto-detected: Pinme subdomain or DNS domain)
-pinme bind <path> --domain <name>
-pinme bind <path> -d <name>
+pinme upload <path> --domain <name>
+pinme upload <path> -d <name>
 ```
 
 **Smart Auto-Detection:**
@@ -242,13 +242,13 @@ pinme bind <path> -d <name>
 **Examples:**
 ```bash
 # Bind to a Pinme subdomain (auto-detected)
-pinme bind ./dist --domain my-site
+pinme upload ./dist --domain my-site
 
 # Bind to a DNS domain (auto-detected by the dot)
-pinme bind ./dist --domain example.com
+pinme upload ./dist --domain example.com
 
 # Force DNS mode if needed
-pinme bind ./dist --domain my-site --dns
+pinme upload ./dist --domain my-site --dns
 ```
 
 ### Import CAR files
@@ -371,7 +371,7 @@ The selected directory must meet:
 Upload files and bind them to a custom domain. **Domain binding requires VIP membership.**
 
 ```bash
-pinme bind <path> [options]
+pinme upload <path> [options]
 ```
 
 **Options:**
@@ -385,13 +385,13 @@ pinme bind <path> [options]
 pinme bind
 
 # Bind to a Pinme subdomain (auto-detected: no dot in domain)
-pinme bind ./dist --domain my-site
+pinme upload ./dist --domain my-site
 
 # Bind to a DNS domain (auto-detected: contains dot)
-pinme bind ./dist --domain example.com
+pinme upload ./dist --domain example.com
 
 # Force DNS mode with --dns flag
-pinme bind ./dist --domain my-site --dns
+pinme upload ./dist --domain my-site --dns
 ```
 
 **Auto-Detection:**
@@ -584,10 +584,10 @@ Domain binding (both Pinme subdomains and custom DNS domains) requires VIP membe
 3. **Bind your domain**
    ```bash
    # Bind to a Pinme subdomain
-   pinme bind ./dist --domain my-site
+   pinme upload ./dist --domain my-site
 
    # Bind to a custom DNS domain
-   pinme bind ./dist --domain example.com --dns
+   pinme upload ./dist --domain example.com --dns
    ```
 
 ### Checking VIP Status
