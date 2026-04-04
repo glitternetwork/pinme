@@ -5,6 +5,7 @@ import inquirer from 'inquirer';
 import axios from 'axios';
 import { execSync } from 'child_process';
 import { getAuthHeaders } from './utils/webLogin';
+import { installProjectDependencies } from './utils/installProjectDependencies';
 import {
   createApiError,
   createCommandError,
@@ -252,15 +253,13 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
     // Install workspace dependencies from the project root.
     // The template uses npm workspaces, so a single root install is enough.
     try {
-      execSync('npm install', {
-        cwd: targetDir,
-        stdio: 'inherit',
-      });
+      installProjectDependencies(targetDir);
       console.log(chalk.green('   Project dependencies installed'));
     } catch (error: any) {
-      throw createCommandError('project dependency install', 'npm install', error, [
+      throw createCommandError('project dependency install', 'npm install --cache <temp-dir> --no-audit --no-fund', error, [
         'Check network connectivity and npm registry availability.',
         'Inspect the generated workspace `package.json` files for dependency conflicts.',
+        'If your global npm cache contains corrupted or root-owned files, `pinme` already retries with an isolated cache before failing.',
       ]);
     }
 

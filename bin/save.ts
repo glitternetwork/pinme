@@ -4,6 +4,7 @@ import path from 'path';
 import axios from 'axios';
 import { execSync } from 'child_process';
 import { getAuthHeaders } from './utils/webLogin';
+import { installProjectDependencies } from './utils/installProjectDependencies';
 import {
   createApiError,
   createCommandError,
@@ -71,15 +72,13 @@ function installDependencies() {
   // The project template uses npm workspaces. Installing from the root
   // keeps frontend/backend versions in sync and avoids redundant installs.
   try {
-    execSync('npm install', {
-      cwd: PROJECT_DIR,
-      stdio: 'inherit',
-    });
+    installProjectDependencies(PROJECT_DIR);
     console.log(chalk.green('Project dependencies installed'));
   } catch (error: any) {
-    throw createCommandError('project dependency install', 'npm install', error, [
+    throw createCommandError('project dependency install', 'npm install --cache <temp-dir> --no-audit --no-fund', error, [
       'Check network connectivity and npm registry availability.',
       'If `package-lock.json` is stale or conflicted, resolve that before retrying.',
+      'If your global npm cache contains corrupted or root-owned files, `pinme` already retries with an isolated cache before failing.',
     ]);
   }
 }
