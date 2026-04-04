@@ -209,7 +209,7 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       ]);
     }
 
-    // 3. Update pinme.toml with worker URL
+    // 3. Update pinme.toml with project_name
     console.log(chalk.blue('\n3. Updating configuration...'));
     const configPath = path.join(targetDir, 'pinme.toml');
     const config = fs.readFileSync(configPath, 'utf-8');
@@ -223,7 +223,6 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
     fs.writeFileSync(configPath, updatedConfig);
     console.log(chalk.green(`   Updated pinme.toml`));
     console.log(chalk.gray(`   metadata: ${workerData.metadata}`));
-    console.log(chalk.gray(`   VITE_API_URL: ${workerData.api_domain}`));
     // 4. Save metadata to backend directory
     const backendDir = path.join(targetDir, 'backend');
     if (fs.existsSync(backendDir) && workerData.metadata) {
@@ -265,7 +264,30 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       );
       fs.writeFileSync(envPath, envContent);
       console.log(chalk.green(`   Created frontend/.env file`));
+      console.log(chalk.gray(`   VITE_API_URL: ${workerData.api_domain}`));
     }
+    
+    // Update pinme.toml with api_url (append after project_name)
+    let pinmeConfig = fs.readFileSync(configPath, 'utf-8');
+    if (pinmeConfig.includes('api_url')) {
+      pinmeConfig = pinmeConfig.replace(
+        /api_url\s*=\s*"[^"]*"/,
+        `api_url = "${workerData.api_domain}"`
+      );
+    } else {
+      // Append api_url line after project_name
+      const lines = pinmeConfig.split('\n');
+      const newLines: string[] = [];
+      for (const line of lines) {
+        newLines.push(line);
+        if (line.trim().startsWith('project_name')) {
+          newLines.push(`api_url = "${workerData.api_domain}"`);
+        }
+      }
+      pinmeConfig = newLines.join('\n');
+    }
+    fs.writeFileSync(configPath, pinmeConfig);
+    console.log(chalk.green(`   Updated pinme.toml with api_url`));
 
     // 6. Install dependencies
     console.log(chalk.blue('\n4. Installing dependencies...'));
