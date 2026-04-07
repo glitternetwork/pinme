@@ -16,14 +16,26 @@ import {
 // Template directory - relative to bin folder (works both in dev and npm)
 const PROJECT_DIR = process.cwd();
 const API_BASE = process.env.PINME_API_BASE || '';
+const TEMPLATE_BRANCH = process.env.PINME_TEMPLATE_BRANCH || 'main';
 
 // 模板仓库地址 (使用 HTTPS 下载 zip)
 const TEMPLATE_REPO = 'glitternetwork/pinme-worker-template';
-const TEMPLATE_ZIP_URL = `https://github.com/${TEMPLATE_REPO}/archive/refs/heads/main.zip`;
+const TEMPLATE_REPO_NAME = TEMPLATE_REPO.split('/').pop() || 'pinme-worker-template';
+
+function getTemplateZipUrl(branch: string): string {
+  return `https://github.com/${TEMPLATE_REPO}/archive/refs/heads/${encodeURIComponent(branch)}.zip`;
+}
 
 interface CreateOptions {
   name?: string;
   force?: boolean;
+}
+
+interface AuthConfig {
+  tenant_id: string;
+  api_key: string;
+  auth_domain: string;
+  project_id: string;
 }
 
 interface CreateWorkerResponse {
@@ -32,6 +44,43 @@ interface CreateWorkerResponse {
   project_name: string;
   uuid: string;
   api_key?: string;
+  auth_config?: AuthConfig;
+}
+
+function buildAuthConfigExport(authConfig: AuthConfig): string {
+  return `export const auth_config = ${JSON.stringify(authConfig, null, 2)};\n`;
+}
+
+function injectAuthConfigIntoFile(fileContent: string, authConfig: AuthConfig): string {
+  const authConfigExport = buildAuthConfigExport(authConfig).trimEnd();
+  const authConfigPattern = /export\s+const\s+auth_config\s*=\s*\{[\s\S]*?\};?/m;
+
+  if (authConfigPattern.test(fileContent)) {
+    return fileContent.replace(authConfigPattern, authConfigExport);
+  }
+
+  const trimmed = fileContent.trimEnd();
+  if (!trimmed) {
+    return `${authConfigExport}\n`;
+  }
+
+  return `${trimmed}\n\n${authConfigExport}\n`;
+}
+
+function resolveExtractedTemplateDir(extractDir: string): string {
+  const entries = fs.readdirSync(extractDir, { withFileTypes: true });
+  const templateDir = entries.find((entry) => (
+    entry.isDirectory() && entry.name.startsWith(`${TEMPLATE_REPO_NAME}-`)
+  ));
+
+  if (!templateDir) {
+    throw createConfigError('Downloaded template archive structure is invalid.', [
+      `Expected a directory starting with \`${TEMPLATE_REPO_NAME}-\` inside the extracted archive.`,
+      `Template branch: ${TEMPLATE_BRANCH}`,
+    ]);
+  }
+
+  return path.join(extractDir, templateDir.name);
 }
 
 /**
@@ -136,7 +185,10 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
     // 2. Download template from repository (using HTTPS, no git required)
     console.log(chalk.blue('\n2. Downloading template from repository...'));
     const zipPath = path.join(PROJECT_DIR, 'template.zip');
+    const extractDir = path.join(PROJECT_DIR, `.pinme-template-${Date.now()}`);
+    const templateZipUrl = getTemplateZipUrl(TEMPLATE_BRANCH);
     let downloadSuccess = false;
+    console.log(chalk.gray(`   Template branch: ${TEMPLATE_BRANCH}`));
     
     // Retry download up to 3 times
     for (let attempt = 1; attempt <= 3 && !downloadSuccess; attempt++) {
@@ -144,7 +196,7 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
         console.log(chalk.gray(`   Download attempt ${attempt}/3...`));
         
         // Download zip file
-        execSync(`curl -L --retry 3 --retry-delay 2 -o "${zipPath}" "${TEMPLATE_ZIP_URL}"`, {
+        execSync(`curl -L --retry 3 --retry-delay 2 -o "${zipPath}" "${templateZipUrl}"`, {
           stdio: 'inherit',
         });
         
@@ -166,20 +218,20 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
     }
     
     try {
+      fs.ensureDirSync(extractDir);
+
       // Unzip to target directory
-      execSync(`unzip -o "${zipPath}" -d "${PROJECT_DIR}"`, {
+      execSync(`unzip -o "${zipPath}" -d "${extractDir}"`, {
         stdio: 'inherit',
       });
       
-      // Move files from subdirectory to target directory
-      const subDir = path.join(PROJECT_DIR, 'pinme-worker-template-main');
-      if (fs.existsSync(subDir)) {
-        fs.copySync(subDir, targetDir);
-        fs.removeSync(subDir);
-      }
+      // Move files from extracted subdirectory to target directory
+      const subDir = resolveExtractedTemplateDir(extractDir);
+      fs.copySync(subDir, targetDir);
       
       // Clean up zip file
       fs.removeSync(zipPath);
+      fs.removeSync(extractDir);
       
       // Remove any existing node_modules and package-lock.json to ensure clean install
       // This fixes issues with rollup platform-specific dependencies
@@ -248,6 +300,19 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       );
       fs.writeFileSync(wranglerPath, wranglerContent);
       console.log(chalk.green(`   Updated backend/wrangler.toml API_KEY`));
+    }
+
+    const frontendConfigPath = path.join(targetDir, 'frontend', 'src', 'utils', 'config.ts');
+    if (workerData.auth_config) {
+      const frontendConfigContent = fs.existsSync(frontendConfigPath)
+        ? fs.readFileSync(frontendConfigPath, 'utf-8')
+        : '';
+      fs.ensureDirSync(path.dirname(frontendConfigPath));
+      fs.writeFileSync(
+        frontendConfigPath,
+        injectAuthConfigIntoFile(frontendConfigContent, workerData.auth_config)
+      );
+      console.log(chalk.green(`   Updated frontend/src/utils/config.ts auth_config`));
     }
 
 
