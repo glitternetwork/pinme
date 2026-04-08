@@ -31,40 +31,33 @@ interface CreateOptions {
   force?: boolean;
 }
 
-interface AuthConfig {
-  tenant_id: string;
-  api_key: string;
-  auth_domain: string;
-  project_id: string;
-}
-
 interface CreateWorkerResponse {
   api_domain: string;
   metadata: string;
   project_name: string;
   uuid: string;
   api_key?: string;
-  auth_config?: AuthConfig;
+  public_client_config?: Record<string, any>;
 }
 
-function buildAuthConfigExport(authConfig: AuthConfig): string {
-  return `export const auth_config = ${JSON.stringify(authConfig, null, 2)};\n`;
+function buildPublicClientConfigExport(publicClientConfig: Record<string, any>): string {
+  return `export const public_client_config = ${JSON.stringify(publicClientConfig, null, 2)};\n`;
 }
 
-function injectAuthConfigIntoFile(fileContent: string, authConfig: AuthConfig): string {
-  const authConfigExport = buildAuthConfigExport(authConfig).trimEnd();
-  const authConfigPattern = /export\s+const\s+auth_config\s*=\s*\{[\s\S]*?\};?/m;
+function injectPublicClientConfigIntoFile(fileContent: string, publicClientConfig: Record<string, any>): string {
+  const configExport = buildPublicClientConfigExport(publicClientConfig).trimEnd();
+  const configPattern = /export\s+const\s+public_client_config\s*=\s*\{[\s\S]*?\};?/m;
 
-  if (authConfigPattern.test(fileContent)) {
-    return fileContent.replace(authConfigPattern, authConfigExport);
+  if (configPattern.test(fileContent)) {
+    return fileContent.replace(configPattern, configExport);
   }
 
   const trimmed = fileContent.trimEnd();
   if (!trimmed) {
-    return `${authConfigExport}\n`;
+    return `${configExport}\n`;
   }
 
-  return `${trimmed}\n\n${authConfigExport}\n`;
+  return `${trimmed}\n\n${configExport}\n`;
 }
 
 function resolveExtractedTemplateDir(extractDir: string): string {
@@ -303,16 +296,16 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
     }
 
     const frontendConfigPath = path.join(targetDir, 'frontend', 'src', 'utils', 'config.ts');
-    if (workerData.auth_config) {
+    if (workerData.public_client_config) {
       const frontendConfigContent = fs.existsSync(frontendConfigPath)
         ? fs.readFileSync(frontendConfigPath, 'utf-8')
         : '';
       fs.ensureDirSync(path.dirname(frontendConfigPath));
       fs.writeFileSync(
         frontendConfigPath,
-        injectAuthConfigIntoFile(frontendConfigContent, workerData.auth_config)
+        injectPublicClientConfigIntoFile(frontendConfigContent, workerData.public_client_config)
       );
-      console.log(chalk.green(`   Updated frontend/src/utils/config.ts auth_config`));
+      console.log(chalk.green(`   Updated frontend/src/utils/config.ts public_client_config`));
     }
 
 
