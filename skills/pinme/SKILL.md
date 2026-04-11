@@ -143,7 +143,8 @@ pinme update-db              # Run SQL migrations only (when only db/ was modifi
 │       ├── main.tsx
 │       ├── App.tsx
 │       ├── utils/
-│       │   └── api.ts      # export const API = import.meta.env.VITE_WORKER_URL || ''
+│       │   ├── api.ts      # export const API = import.meta.env.VITE_WORKER_URL || ''
+│       │   └── config.ts   # Auto-generated: public_client_config (only when auth is enabled)
 │       └── pages/
 │           └── Home/
 │               └── index.tsx

@@ -266,23 +266,23 @@ async function* iterAllUsers(env: Env) {
 
 ## 前端集成（Firebase Auth）
 
-`create_worker` 响应中包含 `auth_config`，前端用它初始化 Firebase Auth SDK。
+`create_worker` 响应中包含 `public_client_config`，前端用它初始化 Firebase Auth SDK。
 
 ### 两种 api_key 区分
 
 | 字段 | 用途 | 是否可暴露到浏览器 |
 |------|------|-----------------|
 | `data.api_key` | 项目 API Key，调用本文所有代理接口 | **不能**，只给 Worker/服务端 |
-| `data.auth_config.api_key` | Firebase Web API Key，初始化前端登录 SDK | 可以 |
+| `data.public_client_config.auth_api_key` | Firebase Web API Key，初始化前端登录 SDK | 可以 |
 
-### auth_config 字段说明
+### public_client_config 字段说明
 
 | 字段 | 前端用途 |
 |------|---------|
-| `auth_config.api_key` | `initializeApp({ apiKey })` |
-| `auth_config.auth_domain` | `initializeApp({ authDomain })` |
-| `auth_config.project_id` | `initializeApp({ projectId })` |
-| `auth_config.tenant_id` | `auth.tenantId = authConfig.tenant_id`（必须设置，否则 token 归属错误） |
+| `public_client_config.auth_api_key` | `initializeApp({ apiKey })` |
+| `public_client_config.auth_domain` | `initializeApp({ authDomain })` |
+| `public_client_config.auth_project_id` | `initializeApp({ projectId })` |
+| `public_client_config.tenant_id` | `auth.tenantId = config.tenant_id`（必须设置，否则 token 归属错误） |
 
 ### 前端 TypeScript 示例
 
@@ -296,21 +296,21 @@ import {
   signInWithPopup,
 } from 'firebase/auth'
 
-type AuthConfig = {
+type PublicClientConfig = {
   tenant_id: string
-  api_key: string
+  auth_api_key: string
   auth_domain: string
-  project_id: string
+  auth_project_id: string
 }
 
-export function createProjectAuth(authConfig: AuthConfig): Auth {
+export function createProjectAuth(config: PublicClientConfig): Auth {
   const app = initializeApp({
-    apiKey: authConfig.api_key,
-    authDomain: authConfig.auth_domain,
-    projectId: authConfig.project_id,
+    apiKey: config.auth_api_key,
+    authDomain: config.auth_domain,
+    projectId: config.auth_project_id,
   })
   const auth = getAuth(app)
-  auth.tenantId = authConfig.tenant_id  // 必须设置，确保 token 归属正确租户
+  auth.tenantId = config.tenant_id  // 必须设置，确保 token 归属正确租户
   return auth
 }
 
@@ -327,12 +327,16 @@ export async function loginWithGoogle(auth: Auth): Promise<string> {
 }
 
 // 用法示例
-const auth = createProjectAuth(createWorkerResponse.data.auth_config)
+// pinme create 会自动将 public_client_config 写入 frontend/src/utils/config.ts
+import { public_client_config } from '../utils/config'
+
+const auth = createProjectAuth(public_client_config)
 const idToken = await loginWithGoogle(auth)
 // 然后把 idToken 发给自己的 Worker，由 Worker 调用 verify_token
 ```
 
 > 前端只负责登录和拿 `id_token`，不要直接持有项目 `api_key`。`verify_token` 必须由 Worker/服务端代调。
+> `frontend/src/utils/config.ts` 由 `pinme create` 自动生成，无需手动创建。
 
 ---
 
