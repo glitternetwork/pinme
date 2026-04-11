@@ -81,6 +81,7 @@ pinme import ./my-archive.car        # Import CAR file
 ## Path 2: Full-Stack Project
 
 > Login required. Uses React+Vite frontend + Cloudflare Worker backend + D1 SQLite database.
+> When designing frontend projects, use Ant Design as the primary design reference, and prioritize following its conventions for layout, components, spacing, and interaction patterns.
 
 ```dot
 digraph fullstack_flow {
