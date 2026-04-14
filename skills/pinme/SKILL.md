@@ -130,19 +130,19 @@ pinme update-db              # Run SQL migrations only (when only db/ was modifi
 │   ├── wrangler.toml       # Worker config (auto-generated, do not modify)
 │   ├── package.json
 │   └── src/
-│       └── worker.ts       # Backend entry — JSON API only
+│       └── worker.ts       # Backend entry — primarily used for JSON APIs in this template
 ├── db/
 │   └── 001_init.sql        # SQL table definitions
 ├── frontend/
 │   ├── package.json
 │   ├── vite.config.ts      # Dev proxy: /api → localhost:8787
 │   ├── index.html
-│   ├── .env                # Auto-generated: VITE_WORKER_URL (do not modify)
+│   ├── .env                # Auto-generated: VITE_API_URL (do not modify)
 │   └── src/
 │       ├── main.tsx
 │       ├── App.tsx
 │       ├── utils/
-│       │   └── api.ts      # export const API = import.meta.env.VITE_WORKER_URL || ''
+│       │   └── api.ts      # export const API = import.meta.env.VITE_API_URL || ''
 │       └── pages/
 │           └── Home/
 │               └── index.tsx
@@ -191,7 +191,7 @@ The backend Worker is deployed at `https://{name}.pinme.pro`. Frontend API reque
 
 ## Worker Code Patterns (backend/src/worker.ts)
 
-The Worker backend only serves JSON APIs. **No npm packages allowed** (no hono, express, etc.). Write routes manually:
+In this template, the Worker backend is used primarily for JSON APIs. Prefer standard Web APIs and simple manual routing by default. Worker-compatible libraries can be added when needed, but the default template does not rely on extra frameworks. Avoid packages that depend on unsupported Node.js runtime features.
 
 ```typescript
 export interface Env {
@@ -233,10 +233,10 @@ export default {
 
 | Prohibited | Alternative |
 |-----------|-------------|
-| `import from 'hono'` or any npm package | Manual routing (`if pathname === '/api/...'`) |
+| `express` or Node-only packages | Manual routing (`if pathname === '/api/...'`) and Worker-compatible Web APIs |
 | `import fs from 'fs'` / Node.js built-in modules | Web APIs: `crypto`, `fetch`, `URL`, etc. |
 | `require()` syntax | ESM `import` only |
-| Worker returning HTML | JSON API only |
+| Returning HTML from this template backend | Prefer JSON APIs unless intentionally repurposing the Worker |
 | Storing passwords in plaintext | Hash with SHA-256 before storing |
 | SQL string concatenation | Use `.bind()` parameterized queries |
 
@@ -301,8 +301,8 @@ async function handleSendEmail(request: Request, env: Env): Promise<Response> {
 
 ```typescript
 // Development: Vite proxies /api → localhost:8787
-// Production: VITE_WORKER_URL is auto-injected by pinme create
-export const API = import.meta.env.VITE_WORKER_URL || '';
+// Production: VITE_API_URL is auto-injected by pinme create
+export const API = import.meta.env.VITE_API_URL || '';
 
 export function getApiUrl(path: string): string {
   return API ? `${API}${path}` : path;
@@ -354,7 +354,7 @@ if (meta.changes === 0) return json({ error: 'Not found' }, 404);
 ## Important Notes
 
 - `pinme.toml`, `backend/wrangler.toml`, `frontend/.env` are auto-generated — do not modify
-- Frontend API URL is obtained via `VITE_WORKER_URL` env var — do not hardcode
+- Frontend API URL is obtained via `VITE_API_URL` env var — do not hardcode
 - Passwords, tokens, and API keys must be stored in secrets, never in config files
 
 ## Common Errors
