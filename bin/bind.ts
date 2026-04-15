@@ -1,9 +1,10 @@
 import path from 'path';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import upload from './utils/uploadToIpfsSplit';
-import { checkDomainAvailable, bindPinmeDomain, bindDnsDomainV4, isVip } from './utils/pinmeApi';
+import { checkDomainAvailable, bindPinmeDomain, bindDnsDomainV4, getWalletBalance } from './utils/pinmeApi';
 import { getAuthConfig } from './utils/webLogin';
+import { isDnsDomain, normalizeDomain, validateDnsDomain } from './utils/domainValidator';
+import { uploadPath } from './services/uploadService';
 
 interface Args {
   domain?: string;
@@ -11,47 +12,6 @@ interface Args {
   dns?: boolean;
 }
 
-// Check if a domain is a DNS domain (contains a dot)
-function isDnsDomain(domain: string): boolean {
-  return domain.includes('.');
-}
-
-// Validate DNS domain format
-function validateDnsDomain(domain: string): { valid: boolean; message?: string } {
-  // Remove protocol if present
-  const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
-
-  // Check for valid domain format
-  const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]*(\.[a-zA-Z0-9][a-zA-Z0-9-]*)*\.[a-zA-Z]{2,}$/;
-  const parts = cleanDomain.split('.');
-
-  // Check each part
-  if (parts.length < 2) {
-    return { valid: false, message: 'Invalid domain format. Please enter a complete domain (e.g., example.com)' };
-  }
-
-  // Check each label (part between dots)
-  for (const part of parts) {
-    if (part.length === 0) {
-      return { valid: false, message: 'Invalid domain format. Consecutive dots are not allowed' };
-    }
-    if (part.length > 63) {
-      return { valid: false, message: 'Invalid domain format. Each label must be 63 characters or less' };
-    }
-    if (!/^[a-zA-Z0-9-]+$/.test(part)) {
-      return { valid: false, message: 'Invalid domain format. Domains can only contain letters, numbers, and hyphens' };
-    }
-    if (/^-|-$/.test(part)) {
-      return { valid: false, message: 'Invalid domain format. Labels cannot start or end with hyphens' };
-    }
-  }
-
-  if (!domainRegex.test(cleanDomain)) {
-    return { valid: false, message: 'Invalid domain format' };
-  }
-
-  return { valid: true };
-}
 
 function parseArgs(): Args {
   // Usage: pinme bind <path> --domain <name> [--dns]
@@ -73,20 +33,21 @@ function parseArgs(): Args {
   return res;
 }
 
-async function checkVipStatus(authConfig: { address: string; token: string }): Promise<boolean> {
-  console.log(chalk.blue('Checking VIP status...'));
+async function checkWalletBalanceStatus(authConfig: { address: string; token: string }): Promise<boolean> {
+  console.log(chalk.blue('Checking wallet balance...'));
   try {
-    const vipResult = await isVip(authConfig.address, authConfig.token);
-    if (!vipResult.data?.is_vip) {
+    const balanceResult = await getWalletBalance(authConfig.address, authConfig.token);
+    const balance = Number(balanceResult.data?.wallet_balance_usd ?? 0);
+    if (!Number.isFinite(balance) || balance <= 0) {
       return false;
     }
-    console.log(chalk.green('VIP verified.'));
+    console.log(chalk.green(`Wallet balance available: $${balance.toFixed(2)}`));
     return true;
   } catch (e: any) {
     if (e.message === 'Token expired') {
       throw e;
     }
-    console.log(chalk.yellow('Failed to check VIP status, continuing...'));
+    console.log(chalk.yellow('Failed to check wallet balance, continuing...'));
     return true;
   }
 }
@@ -121,7 +82,7 @@ export default async function bindCmd(): Promise<void> {
 
     // Auto-detect domain type if not explicitly specified
     const isDns = dns || isDnsDomain(domain);
-    const displayDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    const displayDomain = normalizeDomain(domain);
 
     // Validate DNS domain format
     if (isDns) {
@@ -132,11 +93,11 @@ export default async function bindCmd(): Promise<void> {
       }
     }
 
-    // All domain binding requires VIP
+    // Domain binding now uses wallet balance instead of VIP.
     try {
-      const isVipUser = await checkVipStatus(authConfig);
-      if (!isVipUser) {
-        console.log(chalk.red('Domain binding requires VIP. Please upgrade to VIP first.'));
+      const hasWalletBalance = await checkWalletBalanceStatus(authConfig);
+      if (!hasWalletBalance) {
+        console.log(chalk.red('Insufficient wallet balance. Please recharge your wallet first.'));
         return;
       }
     } catch (e: any) {
@@ -164,7 +125,7 @@ export default async function bindCmd(): Promise<void> {
     // Upload
     const absolutePath = path.resolve(targetPath);
     console.log(chalk.blue(`Uploading: ${absolutePath}`));
-    const up = await upload(absolutePath);
+    const up = await uploadPath(absolutePath);
     if (!up?.contentHash) {
       console.log(chalk.red('Upload failed, binding aborted.'));
       return;

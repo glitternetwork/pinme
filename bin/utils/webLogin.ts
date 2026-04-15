@@ -6,6 +6,7 @@ import { exec } from 'child_process';
 import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
+import { APP_CONFIG } from './config';
 
 // Cross-platform browser opener
 function openBrowser(url: string): void {
@@ -47,8 +48,8 @@ export interface LoginOptions {
 }
 
 const DEFAULT_OPTIONS: Required<LoginOptions> = {
-  apiBaseUrl: process.env.PINME_API_BASE || 'http://ipfs-proxy.opena.chat/api/v4',
-  webBaseUrl: process.env.PINME_WEB_URL || 'http://localhost:5173',
+  apiBaseUrl: APP_CONFIG.pinmeApiBase,
+  webBaseUrl: APP_CONFIG.pinmeWebUrl,
   callbackPort: 34567,
   callbackPath: '/cli/callback',
 };

@@ -10,10 +10,9 @@ import {
   createConfigError,
   printCliError,
 } from './utils/cliError';
+import { getPinmeApiUrl } from './utils/config';
 
 const PROJECT_DIR = process.cwd();
-const API_BASE = process.env.PINME_API_BASE || '';
-
 interface UpdateWorkerOptions {
   projectName?: string;
   name?: string;
@@ -99,7 +98,7 @@ async function updateWorker(workerJsPath: string, modulePaths: string[], metadat
   console.log(chalk.gray(`modulePaths: ${modulePaths}`));
   console.log(chalk.gray(`metadata: ${metadata}`));
 
-  const apiUrl = `${API_BASE}/update_worker?project_name=${encodeURIComponent(projectName)}`;
+  const apiUrl = `${getPinmeApiUrl('/update_worker')}?project_name=${encodeURIComponent(projectName)}`;
   const headers = getAuthHeaders();
   console.log(chalk.gray(`API URL: ${apiUrl}`));
 

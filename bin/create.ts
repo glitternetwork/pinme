@@ -12,10 +12,11 @@ import {
   createConfigError,
   printCliError,
 } from './utils/cliError';
+import { getPinmeApiUrl } from './utils/config';
+import { uploadPath } from './services/uploadService';
 
 // Template directory - relative to bin folder (works both in dev and npm)
 const PROJECT_DIR = process.cwd();
-const API_BASE = process.env.PINME_API_BASE || '';
 const TEMPLATE_BRANCH = process.env.PINME_TEMPLATE_BRANCH || 'main';
 
 // 模板仓库地址 (使用 HTTPS 下载 zip)
@@ -74,6 +75,24 @@ function resolveExtractedTemplateDir(extractDir: string): string {
   }
 
   return path.join(extractDir, templateDir.name);
+}
+
+function updateFrontendUrlInConfig(configPath: string, frontendUrl: string): void {
+  let config = fs.readFileSync(configPath, 'utf-8');
+
+  if (config.includes('frontend_url')) {
+    config = config.replace(
+      /frontend_url\s*=\s*"[^"]*"/,
+      `frontend_url = "${frontendUrl}"`,
+    );
+  } else {
+    config = config.replace(
+      /(project_name\s*=\s*"[^"]*"\n)/,
+      `$1frontend_url = "${frontendUrl}"\n`,
+    );
+  }
+
+  fs.writeFileSync(configPath, config);
 }
 
 /**
@@ -137,7 +156,7 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
 
     // 1. Call API to create worker/D1
     console.log(chalk.blue('\n1. Creating worker and database...'));
-    const apiUrl = `${API_BASE}/create_worker`;
+    const apiUrl = getPinmeApiUrl('/create_worker');
     console.log(chalk.gray(`API URL: ${apiUrl}`));
 
     // Convert project name to lowercase (API requires lowercase)
@@ -449,7 +468,7 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
 
     // 9. Save worker to platform
     console.log(chalk.blue('\n6. Deploying backend worker...'));
-    const saveApiUrl = `${API_BASE}/save_worker?project_name=${encodeURIComponent(workerData.project_name)}`;
+    const saveApiUrl = `${getPinmeApiUrl('/save_worker')}?project_name=${encodeURIComponent(workerData.project_name)}`;
     console.log(chalk.gray(`   API URL: ${saveApiUrl}`));
     
     try {
@@ -537,46 +556,16 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
 
       // Upload to IPFS and capture the URL
       console.log(chalk.blue('   Uploading to IPFS...'));
-      let frontendUrl = '';
       try {
-        const uploadOutput = execSync('pinme upload ./dist', {
-          cwd: frontendDir,
-          encoding: 'utf-8',
-          env: {
-            ...process.env,
-            PINME_PROJECT_NAME: workerData.project_name,
-          },
+        const uploadResult = await uploadPath(path.join(frontendDir, 'dist'), {
+          projectName: workerData.project_name,
         });
-        console.log(uploadOutput);
-        
-        // Extract URL from output (format: https://xxx.pinme.dev)
-        const urlMatch = uploadOutput.match(/https:\/\/[\w-]+\.pinme\.dev/);
-        if (urlMatch) {
-          frontendUrl = urlMatch[0];
-          console.log(chalk.green(`   Frontend uploaded to IPFS: ${frontendUrl}`));
-          
-          // Update pinme.toml with frontend URL
-          const configPath = path.join(targetDir, 'pinme.toml');
-          let config = fs.readFileSync(configPath, 'utf-8');
-          
-          // Add or update frontend_url
-          if (config.includes('frontend_url')) {
-            config = config.replace(
-              /frontend_url\s*=\s*"[^"]*"/,
-              `frontend_url = "${frontendUrl}"`
-            );
-          } else {
-            // Add frontend_url after project_name
-            config = config.replace(
-              /(project_name\s*=\s*"[^"]*"\n)/,
-              `$1frontend_url = "${frontendUrl}"\n`
-            );
-          }
-          fs.writeFileSync(configPath, config);
-          console.log(chalk.green('   Updated pinme.toml with frontend URL'));
-        } else {
-          console.log(chalk.green('   Frontend uploaded to IPFS'));
-        }
+        console.log(chalk.green(`   Frontend uploaded to IPFS: ${uploadResult.publicUrl}`));
+        updateFrontendUrlInConfig(
+          path.join(targetDir, 'pinme.toml'),
+          uploadResult.publicUrl,
+        );
+        console.log(chalk.green('   Updated pinme.toml with frontend URL'));
       } catch (error: any) {
         console.log(chalk.yellow('   Warning: IPFS upload failed, you can upload manually later'));
       }

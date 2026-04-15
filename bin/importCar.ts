@@ -2,15 +2,14 @@ import path from 'path';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import figlet from 'figlet';
-import upload from './utils/uploadToIpfsSplit';
 import fs from 'fs';
 import CryptoJS from 'crypto-js';
 import { checkDomainAvailable, bindPinmeDomain } from './utils/pinmeApi';
 import { getAuthConfig } from './utils/webLogin';
 import { getDeviceId } from './utils/getDeviceId';
+import { APP_CONFIG } from './utils/config';
+import { uploadPath } from './services/uploadService';
 // get from environment variables
-const URL = process.env.IPFS_PREVIEW_URL;
-const secretKey = process.env.SECRET_KEY;
 
 import { checkNodeVersion } from './utils/checkNodeVersion';
 checkNodeVersion();
@@ -110,17 +109,17 @@ export default async (options?: ImportOptions): Promise<void> => {
 
       console.log(chalk.blue(`importing ${absolutePath} to ipfs as CAR...`));
       try {
-        const result = await upload(absolutePath, true); // importAsCar = true
+        const result = await uploadPath(absolutePath, { importAsCar: true });
         if (result) {
           const uid = getUid();
-          const encryptedCID = encryptHash(result.contentHash, secretKey, uid);
+          const encryptedCID = encryptHash(result.contentHash, APP_CONFIG.secretKey, uid);
           console.log(
             chalk.cyan(
               figlet.textSync('Successful', { horizontalLayout: 'full' }),
             ),
           );
           console.log(chalk.cyan(`URL:`));
-          console.log(chalk.cyan(`${URL}${encryptedCID}`));
+          console.log(chalk.cyan(`${APP_CONFIG.ipfsPreviewUrl}${encryptedCID}`));
           // optional: bind domain after import
           if (domainArg) {
             console.log(chalk.blue(`Binding domain: ${domainArg} with CID: ${result.contentHash}`));
@@ -168,18 +167,18 @@ export default async (options?: ImportOptions): Promise<void> => {
 
       console.log(chalk.blue(`importing ${absolutePath} to ipfs as CAR...`));
       try {
-        const result = await upload(absolutePath, true); // importAsCar = true
+        const result = await uploadPath(absolutePath, { importAsCar: true });
 
         if (result) {
           const uid = getUid();
-          const encryptedCID = encryptHash(result.contentHash, secretKey, uid);
+          const encryptedCID = encryptHash(result.contentHash, APP_CONFIG.secretKey, uid);
           console.log(
             chalk.cyan(
               figlet.textSync('Successful', { horizontalLayout: 'full' }),
             ),
           );
           console.log(chalk.cyan(`URL:`));
-          console.log(chalk.cyan(`${URL}${encryptedCID}`));
+          console.log(chalk.cyan(`${APP_CONFIG.ipfsPreviewUrl}${encryptedCID}`));
           if (domainArg) {
             console.log(chalk.blue(`Binding domain: ${domainArg} with CID: ${result.contentHash}`));
             const ok = await bindPinmeDomain(domainArg, result.contentHash);

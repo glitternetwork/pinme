@@ -4,8 +4,7 @@ import axios from 'axios';
 import fs from 'fs-extra';
 import path from 'path';
 import { getAuthHeaders } from './utils/webLogin';
-
-const API_BASE = process.env.PINME_API_BASE || '';
+import { getPinmeApiUrl } from './utils/config';
 
 interface DeleteOptions {
     name?: string;
@@ -72,7 +71,7 @@ export default async function deleteCmd(options: DeleteOptions): Promise<void> {
 
         // Call API to delete project
         console.log(chalk.blue('Deleting project on platform...'));
-        const apiUrl = `${API_BASE}/delete_project`;
+        const apiUrl = getPinmeApiUrl('/delete_project');
         console.log(chalk.gray(`API URL: ${apiUrl}`));
         console.log(chalk.gray(`Project name: ${projectName}`));
 

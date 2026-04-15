@@ -19,6 +19,7 @@ import setAppKeyCmd from './set-appkey';
 import logoutCmd from './logout';
 import showAppKeyCmd from './show-appkey';
 import myDomainsCmd from './my-domains';
+import walletBalanceCmd from './wallet-balance';
 import bindCmd from './bind';
 import loginCmd, { EnvOption } from './login';
 import createCmd from './create';
@@ -104,8 +105,15 @@ program
   .action(() => myDomainsCmd());
 
 program
+  .command('wallet')
+  .alias('wallet-balance')
+  .alias('balance')
+  .description('Show current wallet balance')
+  .action(() => walletBalanceCmd());
+
+program
   .command('bind')
-  .description('Upload and bind to a domain (requires VIP)')
+  .description('Upload and bind to a domain (requires wallet balance)')
   .option('-d, --domain <name>', 'Domain name to bind')
   .option('--dns', 'Force DNS domain mode')
   .action(() => bindCmd());

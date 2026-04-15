@@ -7,3 +7,4 @@ node_modules
 /test-repro
 .catpaw
 .claude/settings.local.json
+chrome-test-1

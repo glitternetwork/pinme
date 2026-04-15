@@ -227,7 +227,7 @@ pinme upload
 pinme upload /path/to/file-or-directory
 ```
 
-### Bind Domain (requires VIP)
+### Bind Domain (requires wallet balance)
 
 ```bash
 # Upload and bind to a domain (auto-detected: Pinme subdomain or DNS domain)
@@ -323,6 +323,11 @@ pinme logout
 # View your domains
 pinme my-domains
 pinme domain
+
+# View wallet balance
+pinme wallet
+pinme wallet-balance
+pinme balance
 ```
 
 ### Get Help
@@ -368,7 +373,7 @@ The selected directory must meet:
 
 ### `bind`
 
-Upload files and bind them to a custom domain. **Domain binding requires VIP membership.**
+Upload files and bind them to a custom domain. **Domain binding deducts from your wallet balance.**
 
 ```bash
 pinme upload <path> [options]
@@ -400,7 +405,7 @@ pinme upload ./dist --domain my-site --dns
 - Use `--dns` or `-D` flag to force DNS domain mode when needed
 
 **Requirements:**
-- VIP membership required for domain binding
+- Sufficient wallet balance is required for domain binding
 - Valid AppKey must be set (run: `pinme set-appkey <AppKey>`)
 - For DNS domains, you must own the domain
 
@@ -421,7 +426,7 @@ pinme upload [path] [--domain <name>]
 
 **Options:**
 - `path`: Path to the file or directory to upload (optional, interactive if not provided)
-- `-d, --domain <name>`: Pinme subdomain to bind after upload (optional, requires VIP)
+- `-d, --domain <name>`: Pinme subdomain to bind after upload (optional, requires wallet balance)
 
 **Examples:**
 ```bash
@@ -435,7 +440,7 @@ pinme upload dist
 pinme upload ./example.jpg
 ```
 
-**Note:** Domain binding during upload requires VIP. Use the `bind` command for domain binding.
+**Note:** Domain binding during upload requires available wallet balance. Use the `bind` command for domain binding.
 
 ### `import`
 
@@ -549,32 +554,32 @@ Log out and clear authentication information from local storage.
 
 List all domains owned by the current account.
 
+### `wallet` / `wallet-balance` / `balance`
+
+Show the current wallet balance for the logged-in account.
+
+```bash
+pinme wallet
+pinme wallet-balance
+pinme balance
+```
+
 ---
 
-## VIP Membership
+## Wallet Billing
 
 ### Overview
 
-VIP membership provides access to premium features including domain binding and custom DNS support.
-
-### VIP Features
-
-| Feature | Free | VIP |
-|---------|------|-----|
-| Upload files to IPFS | ✅ | ✅ |
-| Preview URL | ✅ | ✅ |
-| Pinme subdomain binding | ❌ | ✅ |
-| Custom DNS domain binding | ❌ | ✅ |
-| Priority support | ❌ | ✅ |
+PinMe now uses wallet balance for paid capabilities such as domain binding and custom DNS support.
 
 ### Domain Binding Requirements
 
-Domain binding (both Pinme subdomains and custom DNS domains) requires VIP membership.
+Domain binding (both Pinme subdomains and custom DNS domains) requires sufficient wallet balance.
 
 **Before using domain binding:**
 
-1. **Upgrade to VIP**
-   - Visit [PinMe website](https://pinme.eth.limo/) to upgrade
+1. **Recharge your wallet**
+   - Visit [PinMe website](https://pinme.eth.limo/) to top up your balance
 
 2. **Set AppKey**
    ```bash
@@ -590,9 +595,9 @@ Domain binding (both Pinme subdomains and custom DNS domains) requires VIP membe
    pinme upload ./dist --domain example.com --dns
    ```
 
-### Checking VIP Status
+### Checking Wallet Balance
 
-If you attempt to bind a domain without VIP, you'll see an error message. You can check your VIP status on the [PinMe website](https://pinme.eth.limo/).
+If you attempt to bind a domain without enough balance, you'll see an error message. You can check or recharge your wallet on the [PinMe website](https://pinme.eth.limo/).
 
 ---
 

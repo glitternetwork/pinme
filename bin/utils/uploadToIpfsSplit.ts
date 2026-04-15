@@ -12,16 +12,15 @@ import {
 import { saveUploadHistory } from './history';
 import { getUid } from './getDeviceId';
 import { getAuthHeaders } from './webLogin';
+import { APP_CONFIG } from './config';
 
 // Configuration constants
-const IPFS_API_URL =
-  process.env.IPFS_API_URL || 'https://ipfs.glitterprotocol.dev/api/v2';
-const MAX_RETRIES = parseInt(process.env.MAX_RETRIES || '2');
-const RETRY_DELAY = parseInt(process.env.RETRY_DELAY_MS || '1000');
-const TIMEOUT = parseInt(process.env.TIMEOUT_MS || '600000');
-const MAX_POLL_TIME =
-  parseInt(process.env.MAX_POLL_TIME_MINUTES || '5') * 60 * 1000;
-const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_SECONDS || '2') * 1000;
+const IPFS_API_URL = APP_CONFIG.ipfsApiUrl;
+const MAX_RETRIES = APP_CONFIG.upload.maxRetries;
+const RETRY_DELAY = APP_CONFIG.upload.retryDelayMs;
+const TIMEOUT = APP_CONFIG.upload.timeoutMs;
+const MAX_POLL_TIME = APP_CONFIG.upload.maxPollTimeMs;
+const POLL_INTERVAL = APP_CONFIG.upload.pollIntervalMs;
 const PROGRESS_UPDATE_INTERVAL = 200; // ms
 const EXPECTED_UPLOAD_TIME = 60000; // 60 seconds
 const MAX_PROGRESS = 0.9; // 90%
@@ -73,6 +72,11 @@ interface ChunkStatusResponse {
 interface UploadResult {
   hash: string;
   shortUrl?: string;
+}
+
+interface UploadExecutionOptions {
+  importAsCar?: boolean;
+  projectName?: string;
 }
 
 // Enhanced progress bar with better UX
@@ -450,13 +454,13 @@ async function uploadFileChunks(
 async function completeChunkUpload(
   sessionId: string,
   deviceId: string,
-  importAsCar: boolean = false,
+  options: UploadExecutionOptions = {},
 ): Promise<string> {
   try {
     const requestBody: any = { session_id: sessionId, uid: deviceId };
-    const projectName = process.env.PINME_PROJECT_NAME?.trim();
+    const projectName = options.projectName?.trim();
     let authHeaders: Record<string, string> = {};
-    if (importAsCar) {
+    if (options.importAsCar) {
       requestBody.import_as_car = true;
     }
     if (projectName) {
@@ -491,9 +495,10 @@ async function completeChunkUpload(
 async function getChunkStatus(
   sessionId: string,
   deviceId: string,
+  options: UploadExecutionOptions = {},
 ): Promise<ChunkStatusResponse['data']> {
   try {
-    const projectName = process.env.PINME_PROJECT_NAME?.trim();
+    const projectName = options.projectName?.trim();
     const queryParams = new URLSearchParams({
       trace_id: sessionId,
       uid: deviceId,
@@ -526,6 +531,7 @@ async function getChunkStatus(
 async function monitorChunkProgress(
   traceId: string,
   deviceId: string,
+  options: UploadExecutionOptions = {},
   progressBar?: StepProgressBar,
 ): Promise<UploadResult | null> {
   let consecutiveErrors = 0;
@@ -539,7 +545,7 @@ async function monitorChunkProgress(
   try {
     while (Date.now() - startTime < MAX_POLL_TIME) {
       try {
-        const status = await getChunkStatus(traceId, deviceId);
+        const status = await getChunkStatus(traceId, deviceId, options);
         consecutiveErrors = 0;
 
         if (status.is_ready && status.upload_rst.Hash) {
@@ -580,7 +586,7 @@ async function monitorChunkProgress(
 async function uploadDirectoryInChunks(
   directoryPath: string,
   deviceId: string,
-  importAsCar: boolean = false,
+  options: UploadExecutionOptions = {},
 ): Promise<UploadResult | null> {
   const sizeCheck = checkDirectorySizeLimit(directoryPath);
   if (sizeCheck.exceeds) {
@@ -614,11 +620,15 @@ async function uploadDirectoryInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(3, 'Completing upload');
-    const traceId = await completeChunkUpload(sessionInfo.session_id, deviceId, importAsCar);
+    const traceId = await completeChunkUpload(
+      sessionInfo.session_id,
+      deviceId,
+      options,
+    );
     progressBar.completeStep();
 
     progressBar.startStep(4, 'Waiting for processing');
-    const result = await monitorChunkProgress(traceId, deviceId, progressBar);
+    const result = await monitorChunkProgress(traceId, deviceId, options, progressBar);
     progressBar.completeStep();
 
     // Cleanup
@@ -655,7 +665,7 @@ async function uploadDirectoryInChunks(
 async function uploadFileInChunks(
   filePath: string,
   deviceId: string,
-  importAsCar: boolean = false,
+  options: UploadExecutionOptions = {},
 ): Promise<UploadResult | null> {
   const sizeCheck = checkFileSizeLimit(filePath);
   if (sizeCheck.exceeds) {
@@ -686,11 +696,15 @@ async function uploadFileInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(2, 'Completing upload');
-    const traceId = await completeChunkUpload(sessionInfo.session_id, deviceId, importAsCar);
+    const traceId = await completeChunkUpload(
+      sessionInfo.session_id,
+      deviceId,
+      options,
+    );
     progressBar.completeStep();
 
     progressBar.startStep(3, 'Waiting for processing');
-    const result = await monitorChunkProgress(traceId, deviceId, progressBar);
+    const result = await monitorChunkProgress(traceId, deviceId, options, progressBar);
     progressBar.completeStep();
 
     // Save history
@@ -719,7 +733,10 @@ async function uploadFileInChunks(
 }
 
 // Main export function
-export default async function (filePath: string, importAsCar: boolean = false): Promise<{
+export default async function (
+  filePath: string,
+  options: UploadExecutionOptions = {},
+): Promise<{
   contentHash: string;
   previewHash?: string | null;
   shortUrl?: string;
@@ -732,8 +749,8 @@ export default async function (filePath: string, importAsCar: boolean = false): 
   try {
     const isDirectory = fs.statSync(filePath).isDirectory();
     const result = isDirectory
-      ? await uploadDirectoryInChunks(filePath, deviceId, importAsCar)
-      : await uploadFileInChunks(filePath, deviceId, importAsCar);
+      ? await uploadDirectoryInChunks(filePath, deviceId, options)
+      : await uploadFileInChunks(filePath, deviceId, options);
 
     if (result?.hash) {
       return {

@@ -8,6 +8,7 @@ import {
   createConfigError,
   printCliError,
 } from './utils/cliError';
+import { uploadPath } from './services/uploadService';
 
 const PROJECT_DIR = process.cwd();
 
@@ -51,21 +52,16 @@ function buildFrontend() {
   }
 }
 
-function deployFrontend(projectName: string) {
+async function deployFrontend(projectName: string): Promise<void> {
   console.log(chalk.blue('Deploying frontend to IPFS...'));
   try {
-    execSync('pinme upload ./frontend/dist', {
-      cwd: PROJECT_DIR,
-      stdio: 'inherit',
-      env: {
-        ...process.env,
-        PINME_PROJECT_NAME: projectName,
-      },
+    const uploadResult = await uploadPath(path.join(PROJECT_DIR, 'frontend', 'dist'), {
+      projectName,
     });
-    console.log(chalk.green('Frontend deployed to IPFS'));
+    console.log(chalk.green(`Frontend deployed to IPFS: ${uploadResult.publicUrl}`));
   } catch (error: any) {
-    throw createCommandError('frontend deploy', 'pinme upload ./frontend/dist', error, [
-      'Make sure `frontend/dist` exists and `pinme upload` can run successfully.',
+    throw createCommandError('frontend deploy', 'upload frontend/dist', error, [
+      'Make sure `frontend/dist` exists and the upload API is reachable.',
     ]);
   }
 }
@@ -111,7 +107,7 @@ export default async function updateWebCmd(options?: UpdateWebOptions): Promise<
     // Frontend: build + deploy
     console.log(chalk.blue('\n--- Frontend Update ---'));
     buildFrontend();
-    deployFrontend(projectName);
+    await deployFrontend(projectName);
 
     console.log(chalk.green('\nWeb update complete.'));
     process.exit(0);
