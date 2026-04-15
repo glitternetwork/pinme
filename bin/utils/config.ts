@@ -13,15 +13,11 @@ function readNumberEnv(name: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-const DEFAULT_PINME_API_BASE = 'http://ipfs-proxy.opena.chat/api/v4';
-const DEFAULT_IPFS_API_URL = 'https://ipfs.glitterprotocol.dev/api/v2';
 const DEFAULT_PINME_WEB_URL = 'http://localhost:5173';
 
 export const APP_CONFIG = {
-  pinmeApiBase: trimTrailingSlash(
-    process.env.PINME_API_BASE || DEFAULT_PINME_API_BASE,
-  ),
-  ipfsApiUrl: trimTrailingSlash(process.env.IPFS_API_URL || DEFAULT_IPFS_API_URL),
+  pinmeApiBase: trimTrailingSlash(process.env.PINME_API_BASE || ''),
+  ipfsApiUrl: trimTrailingSlash(process.env.IPFS_API_URL || ''),
   carApiBase: trimTrailingSlash(
     process.env.CAR_API_BASE
       || process.env.IPFS_API_URL

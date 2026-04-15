@@ -217,7 +217,7 @@ export async function getWalletBalance(
   try {
     const client = createPinmeApiClient();
     const { data } = await client.get<WalletBalanceResponse>(
-      '/api/v4/pay/wallet/balance',
+      '/pay/wallet/balance',
       {
         headers: {
           'authentication-tokens': authToken,
