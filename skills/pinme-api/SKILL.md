@@ -16,11 +16,11 @@ The following environment variables are automatically injected when the Worker i
 export interface Env {
   DB: D1Database;
   API_KEY: string;      // Project API Key — used for send_email and chat/completions authentication
-  BASE_URL?: string;    // Optional override for PinMe API base URL, defaults to https://pinme.dev
+  BASE_URL?: string;    // Optional override for PinMe API base URL, defaults to https://pinme.cloud
 }
 ```
 
-> `API_KEY` is the sole credential for the Worker to call PinMe platform APIs. When `BASE_URL` is not set, it defaults to `https://pinme.dev`.
+> `API_KEY` is the sole credential for the Worker to call PinMe platform APIs. When `BASE_URL` is not set, it defaults to `https://pinme.cloud`.
 
 ---
 
@@ -65,7 +65,7 @@ export interface Env {
 
 ```typescript
 async function sendEmail(env: Env, to: string, subject: string, html: string): Promise<{ ok: boolean; error?: string }> {
-  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
   const resp = await fetch(`${baseUrl}/api/v4/send_email`, {
     method: 'POST',
     headers: {
@@ -164,7 +164,7 @@ async function callLLM(
   messages: Array<{ role: string; content: string }>,
   model = 'openai/gpt-4o-mini',
 ): Promise<{ content: string; error?: string }> {
-  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
   const resp = await fetch(
     `${baseUrl}/api/v1/chat/completions?project_name=${projectName}`,
     {
@@ -209,7 +209,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
 async function handleChatStream(request: Request, env: Env): Promise<Response> {
   const body = await request.text();
   const projectName = getProjectName(request);
-  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
 
   // Ensure stream=true in the request
   let parsed = JSON.parse(body);
@@ -333,7 +333,7 @@ async function callPinmeAPI<T>(url: string, apiKey: string, body: unknown): Prom
 ### Usage Examples
 
 ```typescript
-const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
 
 // Send email
 const emailResult = await callPinmeAPI<{ ok: boolean }>(
