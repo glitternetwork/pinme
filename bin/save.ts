@@ -7,6 +7,7 @@ import { getAuthHeaders } from './utils/webLogin';
 import {
   bindDnsDomainV4,
   bindPinmeDomain,
+  getRootDomain,
 } from './utils/pinmeApi';
 import {
   isDnsDomain,
@@ -288,9 +289,7 @@ async function deployFrontend(projectName: string): Promise<{ contentHash: strin
       projectName,
       uid: headers['token-address'],
     });
-    console.log(chalk.green(`Frontend deployed to IPFS: ${uploadResult.publicUrl}`));
     updateFrontendUrlInConfig(path.join(PROJECT_DIR, 'pinme.toml'), uploadResult.publicUrl);
-    console.log(chalk.green('Updated pinme.toml with frontend URL'));
     return {
       contentHash: uploadResult.contentHash,
       publicUrl: uploadResult.publicUrl,
@@ -307,7 +306,7 @@ async function bindFrontendDomain(
   contentHash: string,
   projectName: string,
   headers: Record<string, string>,
-): Promise<void> {
+): Promise<string> {
   const displayDomain = normalizeDomain(domain);
   const isDns = isDnsDomain(displayDomain);
 
@@ -321,7 +320,6 @@ async function bindFrontendDomain(
   }
 
   if (isDns) {
-    console.log(chalk.blue(`Binding DNS domain: ${displayDomain}`));
     const dnsResult = await bindDnsDomainV4(
       displayDomain,
       contentHash,
@@ -332,18 +330,15 @@ async function bindFrontendDomain(
     if (dnsResult.code !== 200) {
       throw new Error(dnsResult.msg || 'DNS binding failed');
     }
-    console.log(chalk.green(`DNS bind success: ${displayDomain}`));
-    console.log(chalk.white(`Visit: https://${displayDomain}`));
-    return;
+    return `https://${displayDomain}`;
   }
 
-  console.log(chalk.blue(`Binding Pinme subdomain: ${displayDomain}`));
   const ok = await bindPinmeDomain(displayDomain, contentHash, projectName);
   if (!ok) {
     throw new Error('Pinme subdomain binding failed');
   }
-  console.log(chalk.green(`Bind success: ${displayDomain}`));
-  console.log(chalk.white(`Visit: https://${displayDomain}.pinit.eth.limo`));
+  const rootDomain = await getRootDomain();
+  return `https://${displayDomain}.${rootDomain}`;
 }
 
 // ============ 主函数 ============
@@ -404,10 +399,10 @@ export default async function saveCmd(options: SaveOptions): Promise<void> {
     console.log(chalk.blue('\n--- Frontend ---'));
     buildFrontend();
     const frontendResult = await deployFrontend(projectName);
+    let finalFrontendUrl = frontendResult.publicUrl;
 
     if (options.domain) {
-      console.log(chalk.blue('\n--- Domain Binding ---'));
-      await bindFrontendDomain(
+      finalFrontendUrl = await bindFrontendDomain(
         options.domain,
         frontendResult.contentHash,
         projectName,
@@ -415,6 +410,8 @@ export default async function saveCmd(options: SaveOptions): Promise<void> {
       );
     }
 
+    console.log(chalk.blue('\n--- Access ---'));
+    console.log(chalk.white(`Frontend URL: ${finalFrontendUrl}`));
     console.log(chalk.green('\nDeployment complete.'));
     process.exit(0);
   } catch (error: any) {

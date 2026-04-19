@@ -4,6 +4,7 @@ import os from 'os';
 import dayjs from 'dayjs';
 import chalk from 'chalk';
 import { formatSize } from './uploadLimits';
+import { getRootDomain } from './pinmeApi';
 
 // history file path
 const HISTORY_DIR = path.join(os.homedir(), '.pinme');
@@ -93,7 +94,7 @@ const getUploadHistory = (limit: number = 10): UploadRecord[] => {
 };
 
 // display the upload history
-const displayUploadHistory = (limit: number = 10): void => {
+const displayUploadHistory = async (limit: number = 10): Promise<void> => {
   const history = getUploadHistory(limit);
   
   if (history.length === 0) {
@@ -103,6 +104,12 @@ const displayUploadHistory = (limit: number = 10): void => {
   
   console.log(chalk.cyan('Upload History:'));
   console.log(chalk.cyan('-'.repeat(80)));
+  let rootDomain: string | null = null;
+  try {
+    rootDomain = await getRootDomain();
+  } catch {
+    rootDomain = null;
+  }
   
   // Display recent records, up to limit records
   const recentHistory = history.slice(-limit);
@@ -112,7 +119,12 @@ const displayUploadHistory = (limit: number = 10): void => {
     console.log(chalk.white(`   Path: ${item.path}`));
     console.log(chalk.white(`   IPFS CID: ${item.contentHash}`));
     if (item.shortUrl) {
-      console.log(chalk.white(`   ENS URL: https://${item.shortUrl}.pinit.eth.limo`));
+      const url = item.shortUrl.includes('.')
+        ? `https://${item.shortUrl}`
+        : rootDomain
+          ? `https://${item.shortUrl}.${rootDomain}`
+          : item.shortUrl;
+      console.log(chalk.white(`   ENS URL: ${url}`));
     }
     console.log(chalk.white(`   Size: ${formatSize(item.size)}`));
     console.log(chalk.white(`   Files: ${item.fileCount}`));

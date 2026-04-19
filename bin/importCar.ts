@@ -4,7 +4,7 @@ import inquirer from 'inquirer';
 import figlet from 'figlet';
 import fs from 'fs';
 import CryptoJS from 'crypto-js';
-import { checkDomainAvailable, bindPinmeDomain } from './utils/pinmeApi';
+import { checkDomainAvailable, bindPinmeDomain, getRootDomain } from './utils/pinmeApi';
 import { getAuthConfig } from './utils/webLogin';
 import { getDeviceId } from './utils/getDeviceId';
 import { APP_CONFIG } from './utils/config';
@@ -129,7 +129,8 @@ export default async (options?: ImportOptions): Promise<void> => {
             const ok = await bindPinmeDomain(domainArg, result.contentHash);
             if (ok) {
               console.log(chalk.green(`Bind success: ${domainArg}`));
-              console.log(chalk.white(`Visit (Pinme subdomain example): https://${domainArg}.pinit.eth.limo`));
+              const rootDomain = await getRootDomain();
+              console.log(chalk.white(`Visit (Pinme subdomain example): https://${domainArg}.${rootDomain}`));
             } else {
               console.log(chalk.red('Binding failed. Please try again later.'));
             }
@@ -190,7 +191,8 @@ export default async (options?: ImportOptions): Promise<void> => {
             const ok = await bindPinmeDomain(domainArg, result.contentHash);
             if (ok) {
               console.log(chalk.green(`Bind success: ${domainArg}`));
-              console.log(chalk.white(`Visit (Pinme subdomain example): https://${domainArg}.pinit.eth.limo`));
+              const rootDomain = await getRootDomain();
+              console.log(chalk.white(`Visit (Pinme subdomain example): https://${domainArg}.${rootDomain}`));
             } else {
               console.log(chalk.red('Binding failed. Please try again later.'));
             }

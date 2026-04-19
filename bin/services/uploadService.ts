@@ -2,6 +2,7 @@ import CryptoJS from 'crypto-js';
 import { getUid } from '../utils/getDeviceId';
 import uploadToIpfsSplit from '../utils/uploadToIpfsSplit';
 import { APP_CONFIG } from '../utils/config';
+import { getRootDomain } from '../utils/pinmeApi';
 
 export interface UploadServiceOptions {
   importAsCar?: boolean;
@@ -30,7 +31,7 @@ function encryptHash(
   return encrypted.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function formatShortUrl(shortUrl?: string): string | undefined {
+async function formatShortUrl(shortUrl?: string): Promise<string | undefined> {
   if (!shortUrl) {
     return undefined;
   }
@@ -45,18 +46,19 @@ function formatShortUrl(shortUrl?: string): string | undefined {
   if (normalized.includes('.')) {
     return `https://${normalized}`;
   }
-  return `https://${normalized}.pinit.eth.limo`;
+  const rootDomain = await getRootDomain();
+  return `https://${normalized}.${rootDomain}`;
 }
 
-export function resolveUploadUrls(
+export async function resolveUploadUrls(
   contentHash: string,
   shortUrl?: string,
   uid?: string,
-): { publicUrl: string; managementUrl: string } {
+): Promise<{ publicUrl: string; managementUrl: string }> {
   const resolvedUid = uid?.trim() || getUid();
   const encryptedCID = encryptHash(contentHash, APP_CONFIG.secretKey, resolvedUid);
   const managementUrl = `${APP_CONFIG.ipfsPreviewUrl}${encryptedCID}`;
-  const publicUrl = formatShortUrl(shortUrl) || managementUrl;
+  const publicUrl = (await formatShortUrl(shortUrl)) || managementUrl;
 
   return {
     publicUrl,
@@ -78,7 +80,7 @@ export async function uploadPath(
     throw new Error('Upload failed: no content hash returned');
   }
 
-  const urls = resolveUploadUrls(result.contentHash, result.shortUrl, options.uid);
+  const urls = await resolveUploadUrls(result.contentHash, result.shortUrl, options.uid);
   return {
     contentHash: result.contentHash,
     shortUrl: result.shortUrl,

@@ -33,9 +33,9 @@ interface UploadOptions {
   [key: string]: any;
 }
 
-function printUploadUrls(contentHash: string, shortUrl?: string): void {
+async function printUploadUrls(contentHash: string, shortUrl?: string): Promise<void> {
   const projectName = APP_CONFIG.pinmeProjectName;
-  const { publicUrl, managementUrl } = resolveUploadUrls(contentHash, shortUrl);
+  const { publicUrl, managementUrl } = await resolveUploadUrls(contentHash, shortUrl);
 
   if (projectName) {
     console.log(chalk.cyan(`URL:`));
@@ -110,7 +110,8 @@ async function bindDomain(
       return false;
     }
     console.log(chalk.green(`Bind success: ${displayDomain}`));
-    console.log(chalk.white(`Visit: https://${displayDomain}.pinit.eth.limo`));
+    const rootDomain = await (await import('./utils/pinmeApi')).getRootDomain();
+    console.log(chalk.white(`Visit: https://${displayDomain}.${rootDomain}`));
   }
   return true;
 }
@@ -222,7 +223,7 @@ export default async (options?: UploadOptions): Promise<void> => {
           figlet.textSync('Successful', { horizontalLayout: 'full' }),
         ),
       );
-      printUploadUrls(result.contentHash, result.shortUrl);
+      await printUploadUrls(result.contentHash, result.shortUrl);
 
       // optional: bind domain after upload
       if (domainArg) {
@@ -333,7 +334,7 @@ export default async (options?: UploadOptions): Promise<void> => {
           figlet.textSync('Successful', { horizontalLayout: 'full' }),
         ),
       );
-      printUploadUrls(result.contentHash, result.shortUrl);
+      await printUploadUrls(result.contentHash, result.shortUrl);
       if (domainArg) {
         console.log(
           chalk.blue(

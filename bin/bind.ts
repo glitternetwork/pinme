@@ -1,7 +1,7 @@
 import path from 'path';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { checkDomainAvailable, bindPinmeDomain, bindDnsDomainV4, getWalletBalance } from './utils/pinmeApi';
+import { checkDomainAvailable, bindPinmeDomain, bindDnsDomainV4, getRootDomain, getWalletBalance } from './utils/pinmeApi';
 import { getAuthConfig } from './utils/webLogin';
 import { isDnsDomain, normalizeDomain, validateDnsDomain } from './utils/domainValidator';
 import { uploadPath } from './services/uploadService';
@@ -154,7 +154,8 @@ export default async function bindCmd(): Promise<void> {
           return;
         }
         console.log(chalk.green(`Bind success: ${displayDomain}`));
-        console.log(chalk.white(`Visit: https://${displayDomain}.pinit.eth.limo`));
+        const rootDomain = await getRootDomain();
+        console.log(chalk.white(`Visit: https://${displayDomain}.${rootDomain}`));
       }
     } catch (e: any) {
       if (e.message === 'Token expired') {

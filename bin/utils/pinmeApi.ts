@@ -76,6 +76,32 @@ export interface CheckDomainResult {
   error?: string;
 }
 
+export interface GetRootDomainResponse {
+  code: number;
+  msg: string;
+  data: {
+    domain: string;
+  };
+}
+
+let rootDomainCache: string | null = null;
+
+export async function getRootDomain(forceRefresh: boolean = false): Promise<string> {
+  if (!forceRefresh && rootDomainCache) {
+    return rootDomainCache;
+  }
+
+  const client = createPinmeApiClient();
+  const { data } = await client.get<GetRootDomainResponse>('/root_domain');
+
+  if (data?.code === 200 && data?.data?.domain) {
+    rootDomainCache = data.data.domain;
+    return rootDomainCache;
+  }
+
+  throw new Error(data?.msg || 'Failed to get root domain');
+}
+
 export async function checkDomainAvailable(
   domainName: string,
 ): Promise<CheckDomainResult> {

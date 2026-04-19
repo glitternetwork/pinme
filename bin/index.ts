@@ -168,11 +168,11 @@ program
     parseInt,
   )
   .option('-c, --clear', 'clear all upload history')
-  .action((options: { limit?: number; clear?: boolean }) => {
+  .action(async (options: { limit?: number; clear?: boolean }) => {
     if (options.clear) {
       clearUploadHistory();
     } else {
-      displayUploadHistory(options.limit || 10);
+      await displayUploadHistory(options.limit || 10);
     }
   });
 
@@ -186,11 +186,11 @@ program
     parseInt,
   )
   .option('-c, --clear', 'clear all upload history')
-  .action((options: { limit?: number; clear?: boolean }) => {
+  .action(async (options: { limit?: number; clear?: boolean }) => {
     if (options.clear) {
       clearUploadHistory();
     } else {
-      displayUploadHistory(options.limit || 10);
+      await displayUploadHistory(options.limit || 10);
     }
   });
 
