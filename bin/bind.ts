@@ -125,7 +125,7 @@ export default async function bindCmd(): Promise<void> {
     // Upload
     const absolutePath = path.resolve(targetPath);
     console.log(chalk.blue(`Uploading: ${absolutePath}`));
-    const up = await uploadPath(absolutePath);
+    const up = await uploadPath(absolutePath, { uid: authConfig.address });
     if (!up?.contentHash) {
       console.log(chalk.red('Upload failed, binding aborted.'));
       return;

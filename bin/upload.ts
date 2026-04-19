@@ -133,13 +133,10 @@ export default async (options?: UploadOptions): Promise<void> => {
     const needsAuth = !!domainArg || dnsArg;
 
     // Check auth only when domain/dns options are provided
-    let authConfig: { address: string; token: string } | null = null;
-    if (needsAuth) {
-      authConfig = getAuthConfig();
-      if (!authConfig) {
-        console.log(chalk.red('Please login first. Run: pinme set-appkey <AppKey>'));
-        return;
-      }
+    const authConfig = getAuthConfig();
+    if (needsAuth && !authConfig) {
+      console.log(chalk.red('Please login first. Run: pinme set-appkey <AppKey>'));
+      return;
     }
 
     // if the parameter is passed, upload directly, pinme upload /path/to/dir
@@ -208,6 +205,7 @@ export default async (options?: UploadOptions): Promise<void> => {
       try {
         result = await uploadPath(absolutePath, {
           projectName: APP_CONFIG.pinmeProjectName,
+          uid: authConfig?.address,
         });
       } catch (error: any) {
         console.error(chalk.red(`Upload error: ${error.message}`));
@@ -318,6 +316,7 @@ export default async (options?: UploadOptions): Promise<void> => {
       try {
         result = await uploadPath(absolutePath, {
           projectName: APP_CONFIG.pinmeProjectName,
+          uid: authConfig?.address,
         });
       } catch (error: any) {
         console.error(chalk.red(`Upload error: ${error.message}`));

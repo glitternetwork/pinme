@@ -77,6 +77,7 @@ interface UploadResult {
 interface UploadExecutionOptions {
   importAsCar?: boolean;
   projectName?: string;
+  uid?: string;
 }
 
 // Enhanced progress bar with better UX
@@ -255,6 +256,7 @@ async function compressDirectory(sourcePath: string): Promise<string> {
 async function initChunkSession(
   filePath: string,
   deviceId: string,
+  options: UploadExecutionOptions = {},
   isDirectory: boolean = false,
 ): Promise<ChunkSessionResponse['data']> {
   const stats = fs.statSync(filePath);
@@ -263,18 +265,30 @@ async function initChunkSession(
   const md5 = await calculateMD5(filePath);
 
   try {
+    const projectName = options.projectName?.trim();
+    let authHeaders: Record<string, string> = {};
+    const requestBody: any = {
+      file_name: fileName,
+      file_size: fileSize,
+      md5: md5,
+      is_directory: isDirectory,
+      uid: deviceId,
+    };
+
+    if (projectName) {
+      requestBody.project_name = projectName;
+      authHeaders = getAuthHeaders();
+    }
+
     const response = await axios.post<ChunkSessionResponse>(
       `${IPFS_API_URL}/chunk/init`,
-      {
-        file_name: fileName,
-        file_size: fileSize,
-        md5: md5,
-        is_directory: isDirectory,
-        uid: deviceId,
-      },
+      requestBody,
       {
         timeout: TIMEOUT,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
       },
     );
 
@@ -605,7 +619,7 @@ async function uploadDirectoryInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(1, 'Initializing session');
-    const sessionInfo = await initChunkSession(compressedPath, deviceId, true);
+    const sessionInfo = await initChunkSession(compressedPath, deviceId, options, true);
     progressBar.completeStep();
 
     progressBar.startStep(2, 'Chunk upload');
@@ -681,7 +695,7 @@ async function uploadFileInChunks(
 
   try {
     progressBar.startStep(0, 'Initializing session');
-    const sessionInfo = await initChunkSession(filePath, deviceId, false);
+    const sessionInfo = await initChunkSession(filePath, deviceId, options, false);
     progressBar.completeStep();
 
     progressBar.startStep(1, 'Chunk upload');
@@ -741,16 +755,16 @@ export default async function (
   previewHash?: string | null;
   shortUrl?: string;
 } | null> {
-  const deviceId = getUid();
-  if (!deviceId) {
-    throw new Error('Device ID not found');
+  const uid = options.uid?.trim() || getUid();
+  if (!uid) {
+    throw new Error('Upload uid not found');
   }
 
   try {
     const isDirectory = fs.statSync(filePath).isDirectory();
     const result = isDirectory
-      ? await uploadDirectoryInChunks(filePath, deviceId, options)
-      : await uploadFileInChunks(filePath, deviceId, options);
+      ? await uploadDirectoryInChunks(filePath, uid, options)
+      : await uploadFileInChunks(filePath, uid, options);
 
     if (result?.hash) {
       return {

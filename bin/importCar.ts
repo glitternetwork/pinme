@@ -109,7 +109,10 @@ export default async (options?: ImportOptions): Promise<void> => {
 
       console.log(chalk.blue(`importing ${absolutePath} to ipfs as CAR...`));
       try {
-        const result = await uploadPath(absolutePath, { importAsCar: true });
+        const result = await uploadPath(absolutePath, {
+          importAsCar: true,
+          uid: getUid(),
+        });
         if (result) {
           const uid = getUid();
           const encryptedCID = encryptHash(result.contentHash, APP_CONFIG.secretKey, uid);
@@ -167,7 +170,10 @@ export default async (options?: ImportOptions): Promise<void> => {
 
       console.log(chalk.blue(`importing ${absolutePath} to ipfs as CAR...`));
       try {
-        const result = await uploadPath(absolutePath, { importAsCar: true });
+        const result = await uploadPath(absolutePath, {
+          importAsCar: true,
+          uid: getUid(),
+        });
 
         if (result) {
           const uid = getUid();

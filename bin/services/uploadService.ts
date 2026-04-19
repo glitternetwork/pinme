@@ -6,6 +6,7 @@ import { APP_CONFIG } from '../utils/config';
 export interface UploadServiceOptions {
   importAsCar?: boolean;
   projectName?: string;
+  uid?: string;
 }
 
 export interface UploadServiceResult {
@@ -50,9 +51,10 @@ function formatShortUrl(shortUrl?: string): string | undefined {
 export function resolveUploadUrls(
   contentHash: string,
   shortUrl?: string,
+  uid?: string,
 ): { publicUrl: string; managementUrl: string } {
-  const uid = getUid();
-  const encryptedCID = encryptHash(contentHash, APP_CONFIG.secretKey, uid);
+  const resolvedUid = uid?.trim() || getUid();
+  const encryptedCID = encryptHash(contentHash, APP_CONFIG.secretKey, resolvedUid);
   const managementUrl = `${APP_CONFIG.ipfsPreviewUrl}${encryptedCID}`;
   const publicUrl = formatShortUrl(shortUrl) || managementUrl;
 
@@ -69,13 +71,14 @@ export async function uploadPath(
   const result = await uploadToIpfsSplit(targetPath, {
     importAsCar: options.importAsCar,
     projectName: options.projectName,
+    uid: options.uid,
   });
 
   if (!result?.contentHash) {
     throw new Error('Upload failed: no content hash returned');
   }
 
-  const urls = resolveUploadUrls(result.contentHash, result.shortUrl);
+  const urls = resolveUploadUrls(result.contentHash, result.shortUrl, options.uid);
   return {
     contentHash: result.contentHash,
     shortUrl: result.shortUrl,

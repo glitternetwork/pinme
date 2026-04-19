@@ -559,6 +559,7 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       try {
         const uploadResult = await uploadPath(path.join(frontendDir, 'dist'), {
           projectName: workerData.project_name,
+          uid: headers['token-address'],
         });
         console.log(chalk.green(`   Frontend uploaded to IPFS: ${uploadResult.publicUrl}`));
         updateFrontendUrlInConfig(

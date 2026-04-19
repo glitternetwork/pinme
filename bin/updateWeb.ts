@@ -55,8 +55,10 @@ function buildFrontend() {
 async function deployFrontend(projectName: string): Promise<void> {
   console.log(chalk.blue('Deploying frontend to IPFS...'));
   try {
+    const headers = getAuthHeaders();
     const uploadResult = await uploadPath(path.join(PROJECT_DIR, 'frontend', 'dist'), {
       projectName,
+      uid: headers['token-address'],
     });
     console.log(chalk.green(`Frontend deployed to IPFS: ${uploadResult.publicUrl}`));
   } catch (error: any) {
