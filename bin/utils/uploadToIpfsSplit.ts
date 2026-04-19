@@ -64,6 +64,8 @@ interface ChunkStatusResponse {
       Size: number;
       Hash?: string;
       ShortUrl?: string;
+      pinme_domain?: string;
+      dns_domain?: string;
     };
     domain?: string;
   };
@@ -72,6 +74,8 @@ interface ChunkStatusResponse {
 interface UploadResult {
   hash: string;
   shortUrl?: string;
+  pinmeUrl?: string;
+  dnsUrl?: string;
 }
 
 interface UploadExecutionOptions {
@@ -87,12 +91,13 @@ function extractAxiosErrorMessage(error: any): string {
     return responseData.trim();
   }
 
-  const message = responseData?.msg
-    || responseData?.message
-    || responseData?.error
-    || responseData?.data?.msg
-    || responseData?.data?.message
-    || responseData?.data?.error;
+  const message =
+    responseData?.msg ||
+    responseData?.message ||
+    responseData?.error ||
+    responseData?.data?.msg ||
+    responseData?.data?.message ||
+    responseData?.data?.error;
 
   if (typeof message === 'string' && message.trim()) {
     return message.trim();
@@ -133,11 +138,13 @@ function logAxiosErrorDetails(prefix: string, error: any): void {
 
 function isStorageLimitError(error: any): boolean {
   const message = extractAxiosErrorMessage(error).toLowerCase();
-  return message.includes('storage space limit')
-    || message.includes('space limit reached')
-    || message.includes('storage limit reached')
-    || message.includes('quota exceeded')
-    || message.includes('insufficient storage');
+  return (
+    message.includes('storage space limit') ||
+    message.includes('space limit reached') ||
+    message.includes('storage limit reached') ||
+    message.includes('quota exceeded') ||
+    message.includes('insufficient storage')
+  );
 }
 
 // Enhanced progress bar with better UX
@@ -220,8 +227,9 @@ class StepProgressBar {
 
       const duration = this.formatDuration(Math.floor(elapsed / 1000));
       const progressBar = this.createProgressBar(progress);
-      this.spinner.text = `Uploading ${this.fileName
-        }... ${progressBar} ${Math.round(progress * 100)}% (${duration})`;
+      this.spinner.text = `Uploading ${
+        this.fileName
+      }... ${progressBar} ${Math.round(progress * 100)}% (${duration})`;
     }, PROGRESS_UPDATE_INTERVAL);
   }
 
@@ -431,7 +439,8 @@ async function uploadChunkWithAbort(
     }
 
     throw new Error(
-      `Chunk ${chunkIndex + 1} upload failed after ${MAX_RETRIES} retries: ${error.message
+      `Chunk ${chunkIndex + 1} upload failed after ${MAX_RETRIES} retries: ${
+        error.message
       }`,
     );
   }
@@ -507,8 +516,9 @@ async function uploadFileChunks(
         }
 
         hasFatalError = true;
-        fatalError = `Chunk ${chunkIndex + 1}/${totalChunks} upload failed: ${error.message
-          }`;
+        fatalError = `Chunk ${chunkIndex + 1}/${totalChunks} upload failed: ${
+          error.message
+        }`;
         abortController.abort();
         throw new Error(fatalError);
       }
@@ -640,13 +650,14 @@ async function monitorChunkProgress(
           if (progressBar) {
             progressBar.stopSimulatingProgress();
           }
-          // Use domain from backend to construct full URL
           const shortUrl = status.upload_rst.ShortUrl;
-          const domain = status.domain;
-          const fullShortUrl = shortUrl && domain ? `${shortUrl}.${domain}` : shortUrl;
+          const pinmeDomain = status.upload_rst.pinme_domain;
+          const dnsDomain = status.upload_rst.dns_domain;
           return {
             hash: status.upload_rst.Hash,
-            shortUrl: fullShortUrl,
+            shortUrl,
+            pinmeUrl: pinmeDomain,
+            dnsUrl: dnsDomain,
           };
         }
       } catch (error: any) {
@@ -692,7 +703,12 @@ async function uploadDirectoryInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(1, 'Initializing session');
-    const sessionInfo = await initChunkSession(compressedPath, deviceId, options, true);
+    const sessionInfo = await initChunkSession(
+      compressedPath,
+      deviceId,
+      options,
+      true,
+    );
     progressBar.completeStep();
 
     progressBar.startStep(2, 'Chunk upload');
@@ -715,7 +731,12 @@ async function uploadDirectoryInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(4, 'Waiting for processing');
-    const result = await monitorChunkProgress(traceId, deviceId, options, progressBar);
+    const result = await monitorChunkProgress(
+      traceId,
+      deviceId,
+      options,
+      progressBar,
+    );
     progressBar.completeStep();
 
     // Cleanup
@@ -734,6 +755,8 @@ async function uploadDirectoryInChunks(
       fileCount: 0,
       isDirectory: true,
       shortUrl: result?.shortUrl || null,
+      pinmeUrl: result?.pinmeUrl || null,
+      dnsUrl: result?.dnsUrl || null,
     };
     saveUploadHistory(uploadData);
 
@@ -768,7 +791,12 @@ async function uploadFileInChunks(
 
   try {
     progressBar.startStep(0, 'Initializing session');
-    const sessionInfo = await initChunkSession(filePath, deviceId, options, false);
+    const sessionInfo = await initChunkSession(
+      filePath,
+      deviceId,
+      options,
+      false,
+    );
     progressBar.completeStep();
 
     progressBar.startStep(1, 'Chunk upload');
@@ -791,7 +819,12 @@ async function uploadFileInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(3, 'Waiting for processing');
-    const result = await monitorChunkProgress(traceId, deviceId, options, progressBar);
+    const result = await monitorChunkProgress(
+      traceId,
+      deviceId,
+      options,
+      progressBar,
+    );
     progressBar.completeStep();
 
     // Save history
@@ -804,6 +837,8 @@ async function uploadFileInChunks(
       fileCount: 1,
       isDirectory: false,
       shortUrl: result?.shortUrl || null,
+      pinmeUrl: result?.pinmeUrl || null,
+      dnsUrl: result?.dnsUrl || null,
     };
     saveUploadHistory(uploadData);
 
@@ -827,6 +862,8 @@ export default async function (
   contentHash: string;
   previewHash?: string | null;
   shortUrl?: string;
+  pinmeUrl?: string;
+  dnsUrl?: string;
 } | null> {
   const uid = options.uid?.trim() || getUid();
   if (!uid) {
@@ -844,6 +881,8 @@ export default async function (
         contentHash: result.hash,
         previewHash: null,
         shortUrl: result.shortUrl,
+        pinmeUrl: result.pinmeUrl,
+        dnsUrl: result.dnsUrl,
       };
     }
     throw new Error('Upload failed: no hash returned');

@@ -21,6 +21,8 @@ interface UploadRecord {
   fileCount: number;
   type: 'directory' | 'file';
   shortUrl?: string | null;
+  pinmeUrl?: string | null;
+  dnsUrl?: string | null;
 }
 
 interface UploadHistory {
@@ -36,6 +38,8 @@ interface UploadData {
   fileCount?: number;
   isDirectory?: boolean;
   shortUrl?: string | null;
+  pinmeUrl?: string | null;
+  dnsUrl?: string | null;
 }
 
 // ensure the history directory exists
@@ -66,7 +70,9 @@ const saveUploadHistory = (uploadData: UploadData): boolean => {
       size: uploadData.size,
       fileCount: uploadData.fileCount || 1,
       type: uploadData.isDirectory ? 'directory' : 'file',
-      shortUrl: uploadData?.shortUrl || null
+      shortUrl: uploadData?.shortUrl || null,
+      pinmeUrl: uploadData?.pinmeUrl || null,
+      dnsUrl: uploadData?.dnsUrl || null,
     };
     
     history.uploads.unshift(newRecord); // add to the beginning
@@ -93,6 +99,49 @@ const getUploadHistory = (limit: number = 10): UploadRecord[] => {
   }
 };
 
+async function formatHistoryUrl(
+  value?: string | null,
+  options?: { appendRootDomain?: boolean; rootDomain?: string | null },
+): Promise<string | null> {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  if (/^https?:\/\//.test(normalized)) {
+    if (
+      options?.appendRootDomain &&
+      options.rootDomain &&
+      (() => {
+        try {
+          return !new URL(normalized).hostname.includes('.');
+        } catch {
+          return false;
+        }
+      })()
+    ) {
+      const url = new URL(normalized);
+      url.hostname = `${url.hostname}.${options.rootDomain}`;
+      return url.toString().replace(/\/$/, '');
+    }
+    return normalized.replace(/\/$/, '');
+  }
+
+  if (normalized.includes('.')) {
+    return `https://${normalized}`;
+  }
+
+  if (options?.appendRootDomain && options.rootDomain) {
+    return `https://${normalized}.${options.rootDomain}`;
+  }
+
+  return `https://${normalized}`;
+}
+
 // display the upload history
 const displayUploadHistory = async (limit: number = 10): Promise<void> => {
   const history = getUploadHistory(limit);
@@ -114,17 +163,22 @@ const displayUploadHistory = async (limit: number = 10): Promise<void> => {
   // Display recent records, up to limit records
   const recentHistory = history.slice(-limit);
   
-  recentHistory.forEach((item, index) => {
+  for (const [index, item] of recentHistory.entries()) {
     console.log(chalk.green(`${index + 1}. ${item.filename}`));
     console.log(chalk.white(`   Path: ${item.path}`));
     console.log(chalk.white(`   IPFS CID: ${item.contentHash}`));
-    if (item.shortUrl) {
-      const url = item.shortUrl.includes('.')
-        ? `https://${item.shortUrl}`
-        : rootDomain
-          ? `https://${item.shortUrl}.${rootDomain}`
-          : item.shortUrl;
-      console.log(chalk.white(`   ENS URL: ${url}`));
+    const preferredUrl =
+      (await formatHistoryUrl(item.dnsUrl)) ||
+      (await formatHistoryUrl(item.pinmeUrl, {
+        appendRootDomain: true,
+        rootDomain,
+      })) ||
+      (await formatHistoryUrl(item.shortUrl, {
+        appendRootDomain: true,
+        rootDomain,
+      }));
+    if (preferredUrl) {
+      console.log(chalk.white(`   URL: ${preferredUrl}`));
     }
     console.log(chalk.white(`   Size: ${formatSize(item.size)}`));
     console.log(chalk.white(`   Files: ${item.fileCount}`));
@@ -133,7 +187,7 @@ const displayUploadHistory = async (limit: number = 10): Promise<void> => {
       console.log(chalk.white(`   Date: ${new Date(item.timestamp).toLocaleString()}`));
     }
     console.log(chalk.cyan('-'.repeat(80)));
-  });
+  }
   
   // display the statistics
   const totalSize = history.reduce((sum, record) => sum + record.size, 0);

@@ -33,9 +33,21 @@ interface UploadOptions {
   [key: string]: any;
 }
 
-async function printUploadUrls(contentHash: string, shortUrl?: string): Promise<void> {
+async function printUploadUrls(result: {
+  contentHash: string;
+  shortUrl?: string;
+  pinmeUrl?: string;
+  dnsUrl?: string;
+}): Promise<void> {
   const projectName = APP_CONFIG.pinmeProjectName;
-  const { publicUrl, managementUrl } = await resolveUploadUrls(contentHash, shortUrl);
+  const { publicUrl, managementUrl } = await resolveUploadUrls(
+    result.contentHash,
+    {
+      dnsUrl: result.dnsUrl,
+      pinmeUrl: result.pinmeUrl,
+      shortUrl: result.shortUrl,
+    },
+  );
 
   if (projectName) {
     console.log(chalk.cyan(`URL:`));
@@ -223,7 +235,7 @@ export default async (options?: UploadOptions): Promise<void> => {
           figlet.textSync('Successful', { horizontalLayout: 'full' }),
         ),
       );
-      await printUploadUrls(result.contentHash, result.shortUrl);
+      await printUploadUrls(result);
 
       // optional: bind domain after upload
       if (domainArg) {
@@ -334,7 +346,7 @@ export default async (options?: UploadOptions): Promise<void> => {
           figlet.textSync('Successful', { horizontalLayout: 'full' }),
         ),
       );
-      await printUploadUrls(result.contentHash, result.shortUrl);
+      await printUploadUrls(result);
       if (domainArg) {
         console.log(
           chalk.blue(
