@@ -109,12 +109,14 @@ export async function checkDomainAvailable(
 export async function bindPinmeDomain(
   domainName: string,
   hash: string,
+  projectName?: string,
 ): Promise<boolean> {
   try {
     const client = createPinmeApiClient();
     const { data } = await client.post('/bind_pinme_domain', {
       domain_name: domainName,
       hash,
+      ...(projectName ? { project_name: projectName } : {}),
     });
     return data?.code === 200;
   } catch (e: any) {
@@ -176,6 +178,7 @@ export async function bindDnsDomainV4(
   hash: string,
   tokenAddress: string,
   authToken: string,
+  projectName?: string,
 ): Promise<BindDnsDomainV4Response> {
   try {
     const client = createPinmeApiClient();
@@ -184,6 +187,7 @@ export async function bindDnsDomainV4(
       {
         domain_name: domainName,
         hash: hash,
+        ...(projectName ? { project_name: projectName } : {}),
       },
       {
         headers: {

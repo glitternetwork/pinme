@@ -1,6 +1,6 @@
 {
   "name": "pinme",
-  "version": "2.0.2-beta.6",
+  "version": "2.0.2-beta.8",
   "publishConfig": {
     "access": "public"
   },

@@ -31,6 +31,7 @@ import deleteCmd from './delete';
 
 interface SaveOptions {
   name?: string;
+  domain?: string;
 }
 
 // display the ASCII art logo
@@ -128,7 +129,8 @@ program
 program
   .command('save')
   .description('Deploy the project (frontend + backend)')
-  .action((options: { name?: string }) => saveCmd(options));
+  .option('-d, --domain <name>', 'Bind a domain after frontend deploy')
+  .action((options: SaveOptions) => saveCmd(options));
 
 program
   .command('update-db')

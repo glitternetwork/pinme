@@ -4,6 +4,15 @@ import path from 'path';
 import axios from 'axios';
 import { execSync } from 'child_process';
 import { getAuthHeaders } from './utils/webLogin';
+import {
+  bindDnsDomainV4,
+  bindPinmeDomain,
+} from './utils/pinmeApi';
+import {
+  isDnsDomain,
+  normalizeDomain,
+  validateDnsDomain,
+} from './utils/domainValidator';
 import { installProjectDependencies } from './utils/installProjectDependencies';
 import {
   createApiError,
@@ -18,6 +27,7 @@ const PROJECT_DIR = process.cwd();
 interface SaveOptions {
   projectName?: string;
   name?: string;
+  domain?: string;
 }
 
 // ============ 工具函数 ============
@@ -270,7 +280,7 @@ function updateFrontendUrlInConfig(configPath: string, frontendUrl: string): voi
   fs.writeFileSync(configPath, config);
 }
 
-async function deployFrontend(projectName: string): Promise<void> {
+async function deployFrontend(projectName: string): Promise<{ contentHash: string; publicUrl: string }> {
   console.log(chalk.blue('Deploying frontend to IPFS...'));
   try {
     const headers = getAuthHeaders();
@@ -281,11 +291,59 @@ async function deployFrontend(projectName: string): Promise<void> {
     console.log(chalk.green(`Frontend deployed to IPFS: ${uploadResult.publicUrl}`));
     updateFrontendUrlInConfig(path.join(PROJECT_DIR, 'pinme.toml'), uploadResult.publicUrl);
     console.log(chalk.green('Updated pinme.toml with frontend URL'));
+    return {
+      contentHash: uploadResult.contentHash,
+      publicUrl: uploadResult.publicUrl,
+    };
   } catch (error: any) {
     throw createCommandError('frontend deploy', 'upload frontend/dist', error, [
       'Make sure `frontend/dist` exists and the upload API is reachable.',
     ]);
   }
+}
+
+async function bindFrontendDomain(
+  domain: string,
+  contentHash: string,
+  projectName: string,
+  headers: Record<string, string>,
+): Promise<void> {
+  const displayDomain = normalizeDomain(domain);
+  const isDns = isDnsDomain(displayDomain);
+
+  if (isDns) {
+    const validation = validateDnsDomain(displayDomain);
+    if (!validation.valid) {
+      throw createConfigError(validation.message || 'Invalid domain format.', [
+        'Use a complete domain like `example.com` for DNS binding.',
+      ]);
+    }
+  }
+
+  if (isDns) {
+    console.log(chalk.blue(`Binding DNS domain: ${displayDomain}`));
+    const dnsResult = await bindDnsDomainV4(
+      displayDomain,
+      contentHash,
+      headers['token-address'],
+      headers['authentication-tokens'],
+      projectName,
+    );
+    if (dnsResult.code !== 200) {
+      throw new Error(dnsResult.msg || 'DNS binding failed');
+    }
+    console.log(chalk.green(`DNS bind success: ${displayDomain}`));
+    console.log(chalk.white(`Visit: https://${displayDomain}`));
+    return;
+  }
+
+  console.log(chalk.blue(`Binding Pinme subdomain: ${displayDomain}`));
+  const ok = await bindPinmeDomain(displayDomain, contentHash, projectName);
+  if (!ok) {
+    throw new Error('Pinme subdomain binding failed');
+  }
+  console.log(chalk.green(`Bind success: ${displayDomain}`));
+  console.log(chalk.white(`Visit: https://${displayDomain}.pinit.eth.limo`));
 }
 
 // ============ 主函数 ============
@@ -345,7 +403,17 @@ export default async function saveCmd(options: SaveOptions): Promise<void> {
     // Frontend: build + deploy
     console.log(chalk.blue('\n--- Frontend ---'));
     buildFrontend();
-    await deployFrontend(projectName);
+    const frontendResult = await deployFrontend(projectName);
+
+    if (options.domain) {
+      console.log(chalk.blue('\n--- Domain Binding ---'));
+      await bindFrontendDomain(
+        options.domain,
+        frontendResult.contentHash,
+        projectName,
+        headers,
+      );
+    }
 
     console.log(chalk.green('\nDeployment complete.'));
     process.exit(0);

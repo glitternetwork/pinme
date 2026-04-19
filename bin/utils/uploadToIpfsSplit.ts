@@ -80,6 +80,66 @@ interface UploadExecutionOptions {
   uid?: string;
 }
 
+function extractAxiosErrorMessage(error: any): string {
+  const responseData = error?.response?.data;
+
+  if (typeof responseData === 'string' && responseData.trim()) {
+    return responseData.trim();
+  }
+
+  const message = responseData?.msg
+    || responseData?.message
+    || responseData?.error
+    || responseData?.data?.msg
+    || responseData?.data?.message
+    || responseData?.data?.error;
+
+  if (typeof message === 'string' && message.trim()) {
+    return message.trim();
+  }
+
+  return error?.message || 'Unknown network error';
+}
+
+function formatAxiosError(prefix: string, error: any): Error {
+  const status = error?.response?.status;
+  const message = extractAxiosErrorMessage(error);
+
+  if (status) {
+    return new Error(`${prefix}: ${message} (status: ${status})`);
+  }
+
+  return new Error(`${prefix}: ${message}`);
+}
+
+function logAxiosErrorDetails(prefix: string, error: any): void {
+  const status = error?.response?.status;
+  const responseData = error?.response?.data;
+
+  console.error(`[pinme upload] ${prefix}`);
+  console.error(`[pinme upload] status: ${status ?? 'unknown'}`);
+
+  if (responseData === undefined) {
+    console.error('[pinme upload] response: <empty>');
+    return;
+  }
+
+  try {
+    console.error(`[pinme upload] response: ${JSON.stringify(responseData)}`);
+  } catch {
+    console.error(`[pinme upload] response: ${String(responseData)}`);
+  }
+}
+
+function isStorageLimitError(error: any): boolean {
+  const message = extractAxiosErrorMessage(error).toLowerCase();
+  return message.includes('storage space limit')
+    || message.includes('space limit reached')
+    || message.includes('storage limit reached')
+    || message.includes('quota exceeded')
+    || message.includes('insufficient storage');
+}
+
 // Enhanced progress bar with better UX
 class StepProgressBar {
   private readonly spinner: ora.Ora;
@@ -299,7 +359,8 @@ async function initChunkSession(
     throw new Error(`Session initialization failed: ${msg} (code: ${code})`);
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(`Network error: ${error.message}`);
+      logAxiosErrorDetails('chunk/init failed', error);
+      throw formatAxiosError('Session initialization failed', error);
     }
     throw error;
   }
@@ -347,6 +408,11 @@ async function uploadChunkWithAbort(
       throw new Error('Request cancelled');
     }
 
+    if (axios.isAxiosError(error) && isStorageLimitError(error)) {
+      logAxiosErrorDetails('chunk/upload failed', error);
+      throw formatAxiosError('Chunk upload failed', error);
+    }
+
     if (retryCount < MAX_RETRIES) {
       await delayWithAbortCheck(RETRY_DELAY, signal);
       return uploadChunkWithAbort(
@@ -357,6 +423,11 @@ async function uploadChunkWithAbort(
         signal,
         retryCount + 1,
       );
+    }
+
+    if (axios.isAxiosError(error)) {
+      logAxiosErrorDetails('chunk/upload failed', error);
+      throw formatAxiosError('Chunk upload failed', error);
     }
 
     throw new Error(
@@ -500,7 +571,8 @@ async function completeChunkUpload(
     throw new Error(`Complete upload failed: ${msg} (code: ${code})`);
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(`Network error: ${error.message}`);
+      logAxiosErrorDetails('chunk/complete failed', error);
+      throw formatAxiosError('Complete upload failed', error);
     }
     throw error;
   }
@@ -536,7 +608,8 @@ async function getChunkStatus(
     throw new Error(`Server returned error: ${msg} (code: ${code})`);
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(`Network error: ${error.message}`);
+      logAxiosErrorDetails('up_status failed', error);
+      throw formatAxiosError('Upload status check failed', error);
     }
     throw error;
   }
