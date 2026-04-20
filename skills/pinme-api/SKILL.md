@@ -28,7 +28,7 @@ export interface Env {
 
 **Endpoint:** `POST {BASE_URL}/api/v4/send_email`
 **Authentication:** `X-API-Key` header (using `env.API_KEY`)
-**Sender:** Automatically set to `{project_name}@pinme.dev`
+**Sender:** Automatically set to `{project_name}@pinme.cloud`
 
 ### Request Format
 
