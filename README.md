@@ -33,9 +33,10 @@ Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 - [For AI](#for-ai)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Bind Domain](#bind-domain-requires-vip)
+- [Bind Domain](#bind-domain-requires-wallet-balance)
+- [Full-Stack Projects](#full-stack-projects)
 - [Command Details](#command-details)
-- [VIP Membership](#vip-membership)
+- [Wallet Billing](#wallet-billing)
 - [Common Static File Directories](#common-static-file-directories)
 - [Error Handling](#error-handling)
 - [Upload Limits](#upload-limits)
@@ -79,7 +80,7 @@ pinme upload dist
 pinme upload build
 ```
 
-That's it! You'll get a preview URL like `https://pinme.eth.limo/#/preview/*`
+That's it! PinMe prints the best available public URL. If no domain is available, it falls back to a preview URL like `https://pinme.eth.limo/#/preview/*`.
 
 ---
 
@@ -89,7 +90,7 @@ This section provides AI-specific instructions for deploying websites using PinM
 
 ### AI Execution Protocol
 
-**Goal:** Use PinMe CLI to upload static files to server.
+**Goal:** Use PinMe CLI to upload static files to PinMe/IPFS and return the final public URL.
 
 #### Required Steps
 
@@ -124,13 +125,15 @@ This section provides AI-specific instructions for deploying websites using PinM
    - For React: use `HashRouter` instead of `BrowserRouter`
    - For Vue: use `createHashHistory()` instead of `createWebHistory()`
 
-5. **Execute Deployment Command**
+4. **Execute Deployment Command**
    ```bash
    pinme upload <folder_path>
    ```
 
-6. **Return Result**
-   - Only return final preview page URL: `https://pinme.eth.limo/#/preview/*`
+5. **Return Result**
+   - Only return the final URL printed by PinMe
+   - URL priority is: DNS domain > Pinme subdomain > short URL > hash preview URL
+   - Hash fallback format: `https://pinme.eth.limo/#/preview/*`
    - Do not output additional logs or intermediate steps
 
 #### Prohibited Operations
@@ -153,6 +156,7 @@ For easy AI tool parsing:
   "install": "npm install -g pinme",
   "upload": "pinme upload {{directory}}",
   "upload_with_domain": "pinme upload {{directory}} --domain {{domain}}",
+  "upload_with_dns": "pinme upload {{directory}} --domain {{domain}} --dns",
   "validDirectories": ["dist", "build", "out", "public"],
   "requiredFiles": ["index.html"],
   "excludePatterns": ["node_modules", ".env", ".git", "src"],
@@ -160,17 +164,28 @@ For easy AI tool parsing:
     "single_file": "200MB",
     "total_directory": "1GB"
   },
-  "output": "preview_url",
+  "output": "public_url",
+  "url_priority": ["dns_domain", "pinme_domain", "short_url", "hash_preview_url"],
   "preview_url_format": "https://pinme.eth.limo/#/preview/*",
-  "fixed_domain_format": "https://*.pinit.eth.limo",
+  "pinme_domain_format": "https://<name>.<root-domain>",
+  "dns_domain_format": "https://<your-domain>",
   "other_commands": {
     "version": "pinme --version",
+    "login": "pinme login",
     "list": "pinme list",
     "import": "pinme import <car-file>",
     "export": "pinme export <cid>",
     "set_appkey": "pinme set-appkey",
     "show_appkey": "pinme show-appkey",
     "my_domains": "pinme my-domains",
+    "wallet": "pinme wallet",
+    "bind": "pinme bind <path> --domain <domain>",
+    "create": "pinme create <project-name>",
+    "save": "pinme save",
+    "update_db": "pinme update-db",
+    "update_worker": "pinme update-worker",
+    "update_web": "pinme update-web",
+    "delete": "pinme delete <project-name>",
     "remove": "pinme rm <hash>",
     "logout": "pinme logout",
     "help": "pinme help"
@@ -181,14 +196,14 @@ For easy AI tool parsing:
 ### AI Usage Template
 
 > **Deployment Request:**
-> Please read the PinMe documentation, then use PinMe CLI to deploy the specified website (upload static files) to server.
+> Please read the PinMe documentation, then use PinMe CLI to deploy the specified website by uploading static files to PinMe/IPFS.
 >
 > **Operation Steps:**
 > 1. Check Node.js version (requires 16.13.0+)
 > 2. Check if pinme is installed, install if not
 > 3. Identify the static file directory for the website to deploy
 > 4. Execute deployment command
-> 5. Return preview page link: `https://pinme.eth.limo/#/preview/*`
+> 5. Return the final public URL printed by PinMe. If no custom URL is available, return the preview page link: `https://pinme.eth.limo/#/preview/*`
 
 ---
 
@@ -251,6 +266,48 @@ pinme upload ./dist --domain example.com
 pinme upload ./dist --domain my-site --dns
 ```
 
+### Full-Stack Projects
+
+PinMe can also create and deploy a full-stack project template with frontend, Worker backend, and database migrations.
+
+```bash
+# Login with the browser-based flow
+pinme login
+
+# Create a new project from the PinMe worker template
+pinme create my-app
+
+# Enter the project and deploy frontend + backend + database
+cd my-app
+pinme save
+```
+
+Use targeted update commands when only one layer changed:
+
+```bash
+# Deploy frontend only
+pinme update-web
+
+# Deploy backend Worker only
+pinme update-worker
+
+# Run database SQL migrations only
+pinme update-db
+```
+
+Delete a platform project when needed:
+
+```bash
+# From a PinMe project directory
+pinme delete
+
+# Or specify a project name
+pinme delete my-app
+
+# Skip confirmation
+pinme delete my-app --force
+```
+
 ### Import CAR files
 
 ```bash
@@ -310,6 +367,12 @@ pinme rm <IPFS_hash>
 ### Authentication (AppKey)
 
 ```bash
+# Browser login, recommended for full-stack project commands
+pinme login
+
+# Use a specific environment when needed
+pinme login --env test
+
 # Set AppKey for login and domain binding
 pinme set-appkey
 
@@ -376,7 +439,7 @@ The selected directory must meet:
 Upload files and bind them to a custom domain. **Domain binding deducts from your wallet balance.**
 
 ```bash
-pinme upload <path> [options]
+pinme bind [path] [options]
 ```
 
 **Options:**
@@ -388,6 +451,9 @@ pinme upload <path> [options]
 ```bash
 # Interactive mode (will prompt for path and domain)
 pinme bind
+
+# Bind a path with the dedicated bind command
+pinme bind ./dist --domain my-site
 
 # Bind to a Pinme subdomain (auto-detected: no dot in domain)
 pinme upload ./dist --domain my-site
@@ -410,7 +476,7 @@ pinme upload ./dist --domain my-site --dns
 - For DNS domains, you must own the domain
 
 **URL Formats:**
-- Pinme subdomain: `https://<name>.pinit.eth.limo`
+- Pinme subdomain: `https://<name>.<root-domain>`
 - DNS domain: `https://<your-domain>`
 
 **DNS Setup:**
@@ -426,7 +492,8 @@ pinme upload [path] [--domain <name>]
 
 **Options:**
 - `path`: Path to the file or directory to upload (optional, interactive if not provided)
-- `-d, --domain <name>`: Pinme subdomain to bind after upload (optional, requires wallet balance)
+- `-d, --domain <name>`: Pinme subdomain or DNS domain to bind after upload (optional, requires wallet balance)
+- `--dns`, `-D`: Force DNS domain mode
 
 **Examples:**
 ```bash
@@ -441,6 +508,14 @@ pinme upload ./example.jpg
 ```
 
 **Note:** Domain binding during upload requires available wallet balance. Use the `bind` command for domain binding.
+
+**Printed URL priority:** PinMe displays the best available final URL in this order:
+1. DNS domain, for example `https://example.com`
+2. Pinme subdomain, for example `https://my-site.<root-domain>`
+3. Short URL returned by the upload service
+4. Hash preview URL, for example `https://pinme.eth.limo/#/preview/*`
+
+When the backend returns a Pinme subdomain without the root domain, the CLI automatically appends the current root domain before printing it.
 
 ### `import`
 
@@ -540,7 +615,16 @@ Set AppKey for authentication and automatically merge anonymous upload history t
 pinme set-appkey [AppKey]
 ```
 
-**Note:** Fixed domain binding requires AppKey and Plus membership. Get your AppKey from [PinMe website](https://pinme.eth.limo/).
+**Note:** Domain binding requires authentication and sufficient wallet balance. Get your AppKey from [PinMe website](https://pinme.eth.limo/) or use `pinme login`.
+
+### `login`
+
+Start the browser-based login flow. After login, anonymous upload history is merged into the logged-in account.
+
+```bash
+pinme login
+pinme login --env test
+```
 
 ### `show-appkey` / `appkey`
 
@@ -562,6 +646,66 @@ Show the current wallet balance for the logged-in account.
 pinme wallet
 pinme wallet-balance
 pinme balance
+```
+
+### `create`
+
+Create a new full-stack project from the PinMe Worker template. This creates the platform Worker/database, downloads the template, installs dependencies, injects API configuration, builds the frontend, uploads it, and writes project settings to `pinme.toml`.
+
+```bash
+pinme create [name]
+pinme create my-app
+pinme create my-app --force
+```
+
+**Project layout:**
+- `frontend/`: Static frontend application
+- `backend/`: Worker backend source and metadata
+- `db/`: SQL migration files
+- `pinme.toml`: Project name and deployed frontend URL
+
+### `save`
+
+Deploy the current full-stack project from its root directory. It installs dependencies, builds and saves the Worker, applies SQL files from `db/`, builds `frontend/`, uploads `frontend/dist`, and updates `pinme.toml` with the final frontend URL.
+
+```bash
+pinme save
+pinme save --domain my-site
+pinme save --domain example.com
+```
+
+### `update-web`
+
+Build and deploy only the frontend from `frontend/`.
+
+```bash
+pinme update-web
+```
+
+### `update-worker`
+
+Build and deploy only the Worker from `backend/`. SQL files and frontend assets are not processed.
+
+```bash
+pinme update-worker
+```
+
+### `update-db`
+
+Upload and execute SQL migrations from the `db/` directory. The total SQL payload is limited to 10MB per run.
+
+```bash
+pinme update-db
+```
+
+### `delete`
+
+Delete a platform project, including Worker, domain binding, and D1 database. Local files are kept unchanged.
+
+```bash
+pinme delete
+pinme delete my-app
+pinme delete my-app --force
 ```
 
 ---
@@ -654,8 +798,8 @@ Uploaded files are stored on the IPFS network and accessible through the Glitter
 
 **After successful upload, you receive:**
 1. IPFS content hash
-2. Preview page URL: `https://pinme.eth.limo/#/preview/*`
-3. Fixed domain option: `https://*.pinit.eth.limo`
+2. Final public URL, selected by priority: DNS domain > Pinme subdomain > short URL > hash preview URL
+3. Hash preview fallback: `https://pinme.eth.limo/#/preview/*`
 
 ### Log Locations
 
@@ -668,7 +812,8 @@ Uploaded files are stored on the IPFS network and accessible through the Glitter
 
 ### Preview Page
 - Access uploaded website via preview link: `https://pinme.eth.limo/#/preview/*`
-- Get fixed domain: `https://*.pinit.eth.limo`
+- Get a Pinme subdomain: `https://<name>.<root-domain>`
+- Use a custom DNS domain: `https://<your-domain>`
 
 ### Login and Management
 - Support user login via AppKey
@@ -676,9 +821,9 @@ Uploaded files are stored on the IPFS network and accessible through the Glitter
 - Manage uploaded files
 
 ### Address Binding
-- Bind uploads to fixed addresses (requires Plus membership)
+- Bind uploads to fixed addresses (requires authentication and wallet balance)
 - Convenient for long-term maintenance and access
-- Requires AppKey setup and Plus membership activation
+- Requires `pinme login` or AppKey setup
 
 ---
 
