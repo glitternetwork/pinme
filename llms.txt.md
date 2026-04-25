@@ -1,10 +1,10 @@
 # PinMe — llms.txt
-Last updated: 2026-04-23
+Last updated: 2026-04-26
 Canonical repo: https://github.com/glitternetwork/pinme
 Website: https://pinme.eth.limo/
 
 ## Purpose
-PinMe is a zero-config frontend deployment tool: no servers, no accounts, no setup.
+PinMe is a zero-config frontend deployment tool: no servers to manage, minimal setup.
 It publishes static sites as verifiable content (content-addressed), making silent tampering and accidental breakage harder than traditional hosting.
 
 This file is written for LLMs/AI agents to:
@@ -38,11 +38,15 @@ Prerequisite: Node.js >= 16.13.0
 1) Install:
    npm install -g pinme
 
-2) Build the project (if not already built):
+2) Authenticate:
+   pinme login
+   # or: pinme set-appkey <AppKey>
+
+3) Build the project (if not already built):
    npm install
    npm run build
 
-3) Upload the build output:
+4) Upload the build output:
    pinme upload dist
    # or: pinme upload build
    # or: pinme upload out
@@ -63,12 +67,18 @@ Goal: Upload static files to PinMe and return ONLY the final public URL printed 
    - If missing:
      npm install -g pinme
 
-2) Always ensure a static build exists:
+2) Authenticate before upload:
+   - Preferred:
+     pinme login
+   - For automation/CI:
+     pinme set-appkey <AppKey>
+
+3) Always ensure a static build exists:
    - If the repo looks like a Node frontend project:
      npm install
      npm run build
 
-3) Identify the static output directory (priority order):
+4) Identify the static output directory (priority order):
    1) dist/   (Vite/React/Vue/Astro common)
    2) build/  (Create React App common)
    3) out/    (Next.js static export common)
@@ -82,10 +92,10 @@ Validation rules:
 If no suitable folder is found:
 - Ask the user to specify the correct build output path.
 
-4) Deploy:
+5) Deploy:
    pinme upload <folder_path>
 
-5) Return result:
+6) Return result:
 - Return ONLY the final URL printed by PinMe.
 - URL priority is:
   1) DNS domain
@@ -107,6 +117,9 @@ If no suitable folder is found:
     "node_version": ">=16.13.0"
   },
   "install": "npm install -g pinme",
+  "login": "pinme login",
+  "set_appkey": "pinme set-appkey <AppKey>",
+  "auth_required_for_upload": true,
   "upload": "pinme upload {{directory}}",
   "upload_with_domain": "pinme upload {{directory}} --domain {{domain}}",
   "upload_with_dns": "pinme upload {{directory}} --domain {{domain}} --dns",
@@ -124,7 +137,6 @@ If no suitable folder is found:
   "dns_domain_format": "https://<your-domain>",
   "other_commands": {
     "version": "pinme --version",
-    "login": "pinme login",
     "list": "pinme list",
     "import": "pinme import <car-file>",
     "export": "pinme export <cid>",
@@ -146,7 +158,7 @@ If no suitable folder is found:
 
 ## CLI reference (high-level)
 - pinme upload <dir> [--domain <name>]
-  Upload a static directory. Optionally bind to a Pinme subdomain or DNS domain.
+  Upload a static directory. Login or AppKey authentication is required. Optionally bind to a Pinme subdomain or DNS domain.
 
 - pinme upload <dir> --domain <domain> --dns
   Force DNS domain mode. Otherwise domains containing a dot are auto-detected as DNS domains.
@@ -158,7 +170,7 @@ If no suitable folder is found:
   Show upload history (supports limiting and clearing per README).
 
 - pinme import [path] [--domain <name>]
-  Import a CAR file (interactive if no path). Optionally bind to a domain.
+  Import a CAR file (interactive if no path). Login or AppKey authentication is required. Optionally bind to a domain.
 
 - pinme export <CID> [--output <path>]
   Export IPFS content as a CAR file (defaults to Downloads if no output path).
@@ -225,7 +237,8 @@ Deployment Request:
 Steps:
 1) node --version (must be >=16.13.0)
 2) npm install -g pinme (if needed)
-3) npm install && npm run build
-4) Identify output folder (dist/build/out/public) containing index.html
-5) pinme upload <folder>
-6) Return ONLY the final URL printed by PinMe. If no custom URL is available, return the preview URL: https://pinme.eth.limo/#/preview/*
+3) Authenticate with `pinme login` or `pinme set-appkey <AppKey>`
+4) npm install && npm run build
+5) Identify output folder (dist/build/out/public) containing index.html
+6) pinme upload <folder>
+7) Return ONLY the final URL printed by PinMe. If no custom URL is available, return the preview URL: https://pinme.eth.limo/#/preview/*

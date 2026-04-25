@@ -14,7 +14,7 @@
 # PinMe
 
 [PinMe](https://pinme.eth.limo/) is a zero-config frontend deployment tool.
-No servers. No accounts. No setup.
+No servers to manage. Minimal setup.
 
 Build a static site, generate a page with AI, export your frontend, or import CAR files — then deploy instantly with a single command.
 
@@ -55,14 +55,23 @@ Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 node --version
 ```
 
-### Three Steps to Deploy
+### Four Steps to Deploy
 
 1. **Install PinMe**
 ```bash
 npm install -g pinme
 ```
 
-2. **Build your project** (if not already built)
+2. **Login or set AppKey**
+```bash
+# Recommended: browser login
+pinme login
+
+# Or use an AppKey in CLI/CI environments
+pinme set-appkey <AppKey>
+```
+
+3. **Build your project** (if not already built)
 ```bash
 # For Vite/React/Vue projects
 npm run build
@@ -71,7 +80,7 @@ npm run build
 npm run build
 ```
 
-3. **Upload to PinMe**
+4. **Upload to PinMe**
 ```bash
 # Upload the dist directory (most common)
 pinme upload dist
@@ -105,7 +114,16 @@ This section provides AI-specific instructions for deploying websites using PinM
    npm install -g pinme
    ```
 
-3. **Identify the Static File Directory**
+3. **Authenticate before upload**
+   ```bash
+   # Recommended
+   pinme login
+
+   # Or for automation / non-browser environments
+   pinme set-appkey <AppKey>
+   ```
+
+4. **Identify the Static File Directory**
    Priority order to check:
    - `dist/` - Default output directory for Vue/React/Vite projects
    - `build/` - Output directory for Create React App
@@ -125,12 +143,12 @@ This section provides AI-specific instructions for deploying websites using PinM
    - For React: use `HashRouter` instead of `BrowserRouter`
    - For Vue: use `createHashHistory()` instead of `createWebHistory()`
 
-4. **Execute Deployment Command**
+5. **Execute Deployment Command**
    ```bash
    pinme upload <folder_path>
    ```
 
-5. **Return Result**
+6. **Return Result**
    - Only return the final URL printed by PinMe
    - URL priority is: DNS domain > Pinme subdomain > short URL > hash preview URL
    - Hash fallback format: `https://pinme.eth.limo/#/preview/*`
@@ -154,6 +172,9 @@ For easy AI tool parsing:
     "node_version": ">=16.13.0"
   },
   "install": "npm install -g pinme",
+  "login": "pinme login",
+  "set_appkey": "pinme set-appkey <AppKey>",
+  "auth_required_for_upload": true,
   "upload": "pinme upload {{directory}}",
   "upload_with_domain": "pinme upload {{directory}} --domain {{domain}}",
   "upload_with_dns": "pinme upload {{directory}} --domain {{domain}} --dns",
@@ -171,7 +192,6 @@ For easy AI tool parsing:
   "dns_domain_format": "https://<your-domain>",
   "other_commands": {
     "version": "pinme --version",
-    "login": "pinme login",
     "list": "pinme list",
     "import": "pinme import <car-file>",
     "export": "pinme export <cid>",
@@ -201,9 +221,10 @@ For easy AI tool parsing:
 > **Operation Steps:**
 > 1. Check Node.js version (requires 16.13.0+)
 > 2. Check if pinme is installed, install if not
-> 3. Identify the static file directory for the website to deploy
-> 4. Execute deployment command
-> 5. Return the final public URL printed by PinMe. If no custom URL is available, return the preview page link: `https://pinme.eth.limo/#/preview/*`
+> 3. Authenticate with `pinme login` or `pinme set-appkey <AppKey>`
+> 4. Identify the static file directory for the website to deploy
+> 5. Execute deployment command
+> 6. Return the final public URL printed by PinMe. If no custom URL is available, return the preview page link: `https://pinme.eth.limo/#/preview/*`
 
 ---
 
@@ -235,12 +256,17 @@ pinme --version
 ### Upload Files or Directories
 
 ```bash
+# Login is required before upload
+pinme login
+
 # Interactive upload
 pinme upload
 
 # Specify path directly
 pinme upload /path/to/file-or-directory
 ```
+
+**Authentication requirement:** `pinme upload` and `pinme import` require a valid login session or AppKey. Use `pinme login` for browser login, or `pinme set-appkey <AppKey>` for CLI/CI environments.
 
 ### Bind Domain (requires wallet balance)
 
@@ -311,6 +337,9 @@ pinme delete my-app --force
 ### Import CAR files
 
 ```bash
+# Login is required before import
+pinme login
+
 # Interactive CAR import
 pinme import
 
@@ -471,6 +500,7 @@ pinme upload ./dist --domain my-site --dns
 - Use `--dns` or `-D` flag to force DNS domain mode when needed
 
 **Requirements:**
+- Login or AppKey authentication is required before upload/bind
 - Sufficient wallet balance is required for domain binding
 - Valid AppKey must be set (run: `pinme set-appkey <AppKey>`)
 - For DNS domains, you must own the domain
@@ -494,6 +524,8 @@ pinme upload [path] [--domain <name>]
 - `path`: Path to the file or directory to upload (optional, interactive if not provided)
 - `-d, --domain <name>`: Pinme subdomain or DNS domain to bind after upload (optional, requires wallet balance)
 - `--dns`, `-D`: Force DNS domain mode
+
+**Authentication:** This command requires login. Run `pinme login` first, or configure `pinme set-appkey <AppKey>`.
 
 **Examples:**
 ```bash
@@ -528,6 +560,8 @@ pinme import [path] [--domain <name>]
 **Options:**
 - `path`: Path to the CAR file to import (optional, if not provided, interactive mode will be entered)
 - `-d, --domain <name>`: Pinme subdomain to bind after import (optional)
+
+**Authentication:** This command requires login. Run `pinme login` first, or configure `pinme set-appkey <AppKey>`.
 
 **Examples:**
 ```bash
@@ -816,7 +850,7 @@ Uploaded files are stored on the IPFS network and accessible through the Glitter
 - Use a custom DNS domain: `https://<your-domain>`
 
 ### Login and Management
-- Support user login via AppKey
+- Support browser login and AppKey-based authentication
 - View historical upload records
 - Manage uploaded files
 
@@ -944,6 +978,8 @@ jobs:
       - run: pinme set-appkey "${{ secrets.PINME_APPKEY }}"
       - run: pinme upload dist --domain "${{ secrets.PINME_DOMAIN }}"
 ```
+
+`pinme set-appkey` satisfies the authentication requirement for `pinme upload` in CI.
 
 ### Supported Build Tools
 

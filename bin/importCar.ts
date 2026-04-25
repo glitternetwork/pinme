@@ -6,7 +6,6 @@ import fs from 'fs';
 import CryptoJS from 'crypto-js';
 import { checkDomainAvailable, bindPinmeDomain, getRootDomain } from './utils/pinmeApi';
 import { getAuthConfig } from './utils/webLogin';
-import { getDeviceId } from './utils/getDeviceId';
 import { APP_CONFIG } from './utils/config';
 import { uploadPath } from './services/uploadService';
 // get from environment variables
@@ -64,13 +63,13 @@ function getDomainFromArgs(): string | null {
   return null;
 }
 
-// Get uid: use address from auth if logged in, otherwise use deviceId
+// Upload/import now requires login. Use the authenticated address as uid.
 function getUid(): string {
   const auth = getAuthConfig();
   if (auth?.address) {
     return auth.address;
   }
-  return getDeviceId();
+  throw new Error('Please login first. Run: pinme login');
 }
 
 export default async (options?: ImportOptions): Promise<void> => {
@@ -84,6 +83,12 @@ export default async (options?: ImportOptions): Promise<void> => {
         whitespaceBreak: true,
       }),
     );
+
+    const auth = getAuthConfig();
+    if (!auth) {
+      console.log(chalk.red('Please login first. Run: pinme login'));
+      return;
+    }
 
     // if the parameter is passed, import directly, pinme import /path/to/dir
     const argPath = process.argv[3];

@@ -3,6 +3,7 @@ import { getUid } from '../utils/getDeviceId';
 import uploadToIpfsSplit from '../utils/uploadToIpfsSplit';
 import { APP_CONFIG } from '../utils/config';
 import { getRootDomain } from '../utils/pinmeApi';
+import { getAuthConfig } from '../utils/webLogin';
 
 export interface UploadServiceOptions {
   importAsCar?: boolean;
@@ -111,10 +112,15 @@ export async function uploadPath(
   targetPath: string,
   options: UploadServiceOptions = {},
 ): Promise<UploadServiceResult> {
+  const authConfig = getAuthConfig();
+  if (!authConfig) {
+    throw new Error('Please login first. Run: pinme login');
+  }
+
   const result = await uploadToIpfsSplit(targetPath, {
     importAsCar: options.importAsCar,
     projectName: options.projectName,
-    uid: options.uid,
+    uid: options.uid || authConfig.address,
   });
 
   if (!result?.contentHash) {

@@ -140,17 +140,15 @@ export default async (options?: UploadOptions): Promise<void> => {
       }),
     );
 
+    const authConfig = getAuthConfig();
+    if (!authConfig) {
+      console.log(chalk.red('Please login first. Run: pinme login'));
+      return;
+    }
+
     // Check if domain/dns options are provided
     const domainArg = getDomainFromArgs();
     const dnsArg = getDnsFromArgs();
-    const needsAuth = !!domainArg || dnsArg;
-
-    // Check auth only when domain/dns options are provided
-    const authConfig = getAuthConfig();
-    if (needsAuth && !authConfig) {
-      console.log(chalk.red('Please login first. Run: pinme set-appkey <AppKey>'));
-      return;
-    }
 
     // if the parameter is passed, upload directly, pinme upload /path/to/dir
     const argPath = process.argv[3];

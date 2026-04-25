@@ -84,6 +84,10 @@ interface UploadExecutionOptions {
   uid?: string;
 }
 
+function getUploadAuthHeaders(): Record<string, string> {
+  return getAuthHeaders();
+}
+
 function extractAxiosErrorMessage(error: any): string {
   const responseData = error?.response?.data;
 
@@ -334,7 +338,7 @@ async function initChunkSession(
 
   try {
     const projectName = options.projectName?.trim();
-    let authHeaders: Record<string, string> = {};
+    const authHeaders = getUploadAuthHeaders();
     const requestBody: any = {
       file_name: fileName,
       file_size: fileSize,
@@ -345,7 +349,6 @@ async function initChunkSession(
 
     if (projectName) {
       requestBody.project_name = projectName;
-      authHeaders = getAuthHeaders();
     }
 
     const response = await axios.post<ChunkSessionResponse>(
@@ -400,7 +403,10 @@ async function uploadChunkWithAbort(
       `${IPFS_API_URL}/chunk/upload`,
       form,
       {
-        headers: { ...form.getHeaders() },
+        headers: {
+          ...form.getHeaders(),
+          ...getUploadAuthHeaders(),
+        },
         timeout: TIMEOUT,
         signal,
       },
@@ -554,13 +560,12 @@ async function completeChunkUpload(
   try {
     const requestBody: any = { session_id: sessionId, uid: deviceId };
     const projectName = options.projectName?.trim();
-    let authHeaders: Record<string, string> = {};
+    const authHeaders = getUploadAuthHeaders();
     if (options.importAsCar) {
       requestBody.import_as_car = true;
     }
     if (projectName) {
       requestBody.project_name = projectName;
-      authHeaders = getAuthHeaders();
     }
     const response = await axios.post<ChunkCompleteResponse>(
       `${IPFS_API_URL}/chunk/complete`,
@@ -595,6 +600,7 @@ async function getChunkStatus(
 ): Promise<ChunkStatusResponse['data']> {
   try {
     const projectName = options.projectName?.trim();
+    const authHeaders = getUploadAuthHeaders();
     const queryParams = new URLSearchParams({
       trace_id: sessionId,
       uid: deviceId,
@@ -607,7 +613,10 @@ async function getChunkStatus(
       `${IPFS_API_URL}/up_status?${queryParams.toString()}`,
       {
         timeout: TIMEOUT,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
       },
     );
 
