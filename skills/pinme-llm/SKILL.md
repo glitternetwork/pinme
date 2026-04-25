@@ -1,11 +1,11 @@
 ---
 name: pinme-llm
-description: Use this skill when a PinMe project (Worker TypeScript) needs to call LLM API (chat/completions). Guides AI to generate correct Worker TS code.
+description: Use this skill when a PinMe project (Worker TypeScript) needs to call OpenRouter-backed LLM APIs, including models, chat/completions, streaming, or OpenRouter web search. Guides AI to generate correct Worker TS code.
 ---
 
-# PinMe Worker LLM API Integration
+# PinMe Worker OpenRouter API Integration
 
-Guides how to call PinMe platform's LLM Chat Completions API in a PinMe Worker (TypeScript).
+Guides how to call PinMe platform's OpenRouter proxy APIs in a PinMe Worker (TypeScript). Workers use the PinMe project API key; they never hold the real OpenRouter API key.
 
 ## Environment Variables
 
@@ -15,21 +15,48 @@ The following environment variables are automatically injected when the Worker i
 // backend/src/worker.ts
 export interface Env {
   DB: D1Database;
-  API_KEY: string;      // Project API Key — used for chat/completions authentication
-  BASE_URL?: string;    // Optional override for PinMe API base URL, defaults to https://pinme.dev
+  API_KEY: string;       // Project API Key from create_worker
+  PROJECT_NAME: string;  // Actual project_name from create_worker; must match API_KEY
+  BASE_URL?: string;     // Optional override for PinMe API base URL, defaults to https://pinme.dev
 }
 ```
 
-> `API_KEY` is the sole credential for the Worker to call PinMe platform APIs. When `BASE_URL` is not set, it defaults to `https://pinme.dev`.
+> `API_KEY` authenticates the Worker to PinMe. `PROJECT_NAME` is required for `chat/completions` and must belong to the same project as `API_KEY`. When `BASE_URL` is not set, use `https://pinme.dev`.
 
 ---
 
-## LLM Chat Completions API
+## Models API
+
+**Endpoint:** `GET {BASE_URL}/api/v1/models`
+**Authentication:** `X-API-Key` header (using `env.API_KEY`)
+**Request Body:** none
+
+Use this when the Worker needs to list available OpenRouter models. The response body, status, and headers are passed through from OpenRouter `/models`.
+
+```typescript
+async function listModels(env: Env): Promise<unknown> {
+  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const resp = await fetch(`${baseUrl}/api/v1/models`, {
+    headers: { 'X-API-Key': env.API_KEY },
+  });
+
+  if (!resp.ok) {
+    throw new Error(await extractPinmeOpenRouterError(resp));
+  }
+
+  return await resp.json();
+}
+```
+
+---
+
+## Chat Completions API
 
 **Endpoint:** `POST {BASE_URL}/api/v1/chat/completions?project_name={project_name}`
 **Authentication:** `X-API-Key` header (using `env.API_KEY`)
-**Request Body:** OpenAI-compatible format, passed through to LLM service as-is
+**Request Body:** OpenRouter chat/completions format, passed through as-is after a 1MB size check
 **Streaming:** Supports SSE (`stream: true`)
+**Web Search:** Supports OpenRouter `openrouter:web_search` server tool via the `tools` array
 
 ### Request Format
 
@@ -44,9 +71,54 @@ export interface Env {
 }
 ```
 
-> `project_name` is parsed from the Worker's subdomain — see example below. For available models, refer to [PinMe LLM Supported Models](https://openrouter.ai/models) (OpenAI-compatible format).
+> Use `env.PROJECT_NAME` from `create_worker`; always URL-encode it in the query string. For available models, call `GET /api/v1/models` or refer to OpenRouter model IDs.
+
+### OpenRouter Web Search
+
+PinMe does not provide a raw search endpoint. To search the web, pass OpenRouter's `openrouter:web_search` server tool to `chat/completions`; the model decides whether and when to search.
+
+Always set `max_results` and `max_total_results` to keep search volume and cost bounded.
+
+```typescript
+async function searchWithLLM(env: Env, query: string): Promise<string> {
+  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const resp = await fetch(
+    `${baseUrl}/api/v1/chat/completions?project_name=${encodeURIComponent(env.PROJECT_NAME)}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': env.API_KEY,
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-5.2',
+        messages: [{ role: 'user', content: query }],
+        tools: [
+          {
+            type: 'openrouter:web_search',
+            parameters: {
+              engine: 'auto',
+              max_results: 5,
+              max_total_results: 10,
+            },
+          },
+        ],
+      }),
+    },
+  );
+
+  if (!resp.ok) {
+    throw new Error(await extractPinmeOpenRouterError(resp));
+  }
+
+  const data = await resp.json() as { choices: Array<{ message?: { content?: string } }> };
+  return data.choices[0]?.message?.content ?? '';
+}
+```
 
 ### Response Format
+
+Successful requests return OpenRouter's raw response body.
 
 **Non-streaming Success (200):**
 ```json
@@ -68,29 +140,26 @@ data: [DONE]
 
 | HTTP Status | Meaning | data.error Example |
 |-------------|---------|-------------------|
-| 401 | API Key missing or invalid | `"X-API-Key header is required"` / `"Invalid API key or project name"` |
-| 400 | project_name missing or LLM not configured | `"project_name is required"` / `"LLM service not configured for this project"` |
+| 401 | API Key missing, invalid, or mismatched with project_name | `"X-API-Key header is required"` / `"Invalid API key"` / `"Invalid API key or project name"` |
+| 400 | project_name missing or OpenRouter key not configured | `"project_name is required"` / `"LLM service not configured for this project"` |
+| 403 | LLM balance insufficient or disabled | `"Insufficient balance, please recharge to continue using LLM service"` |
 | 413 | Request body exceeds 1MB | `"Request body too large (max 1MB)"` |
+| 500 | Proxy failed before upstream request | `"Failed to build request"` |
 | 502 | LLM service unavailable | `"LLM service unavailable"` |
+
+If OpenRouter receives the request and returns a 4xx/5xx, PinMe passes through OpenRouter's status, headers, and response body instead of wrapping it.
 
 ### Worker Example Code — Non-streaming
 
 ```typescript
-// Get project_name: parsed from the Worker's subdomain
-function getProjectName(request: Request): string {
-  const host = new URL(request.url).hostname; // e.g. "my-app-1a2b.pinme.pro"
-  return host.split('.')[0];
-}
-
 async function callLLM(
   env: Env,
-  projectName: string,
   messages: Array<{ role: string; content: string }>,
   model = 'openai/gpt-4o-mini',
 ): Promise<{ content: string; error?: string }> {
   const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
   const resp = await fetch(
-    `${baseUrl}/api/v1/chat/completions?project_name=${projectName}`,
+    `${baseUrl}/api/v1/chat/completions?project_name=${encodeURIComponent(env.PROJECT_NAME)}`,
     {
       method: 'POST',
       headers: {
@@ -102,8 +171,7 @@ async function callLLM(
   );
 
   if (!resp.ok) {
-    const err = await resp.json() as { data?: { error?: string } };
-    return { content: '', error: err.data?.error || `HTTP ${resp.status}` };
+    return { content: '', error: await extractPinmeOpenRouterError(resp) };
   }
 
   const data = await resp.json() as { choices: Array<{ message: { content: string } }> };
@@ -113,9 +181,8 @@ async function callLLM(
 // Usage in routes
 async function handleChat(request: Request, env: Env): Promise<Response> {
   const { question } = await request.json() as { question: string };
-  const projectName = getProjectName(request);
 
-  const result = await callLLM(env, projectName, [
+  const result = await callLLM(env, [
     { role: 'system', content: 'You are a helpful assistant.' },
     { role: 'user', content: question },
   ]);
@@ -132,7 +199,6 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
 ```typescript
 async function handleChatStream(request: Request, env: Env): Promise<Response> {
   const body = await request.text();
-  const projectName = getProjectName(request);
   const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
 
   // Ensure stream=true in the request
@@ -140,7 +206,7 @@ async function handleChatStream(request: Request, env: Env): Promise<Response> {
   parsed.stream = true;
 
   const resp = await fetch(
-    `${baseUrl}/api/v1/chat/completions?project_name=${projectName}`,
+    `${baseUrl}/api/v1/chat/completions?project_name=${encodeURIComponent(env.PROJECT_NAME)}`,
     {
       method: 'POST',
       headers: {
@@ -152,8 +218,7 @@ async function handleChatStream(request: Request, env: Env): Promise<Response> {
   );
 
   if (!resp.ok) {
-    const err = await resp.json() as { data?: { error?: string } };
-    return json({ error: err.data?.error || `HTTP ${resp.status}` }, resp.status);
+    return json({ error: await extractPinmeOpenRouterError(resp) }, resp.status);
   }
 
   // Pass through SSE stream directly
@@ -208,7 +273,7 @@ async function streamChat(question: string, onChunk: (text: string) => void): Pr
 
 ## Error Handling Pattern
 
-PinMe platform API unified response format:
+For `/api/v1/models` and `/api/v1/chat/completions`, successful responses are raw OpenRouter responses. Proxy failures before the OpenRouter request use PinMe's wrapped error format:
 
 ```typescript
 interface PinmeResponse<T = unknown> {
@@ -218,10 +283,44 @@ interface PinmeResponse<T = unknown> {
 }
 ```
 
-### Recommended Unified Error Handler
+### Recommended Error Extractor
 
 ```typescript
-async function callPinmeAPI<T>(url: string, apiKey: string, body: unknown): Promise<{ data?: T; error?: string }> {
+async function extractPinmeOpenRouterError(resp: Response): Promise<string> {
+  const fallback = `HTTP ${resp.status}`;
+  try {
+    const body = await resp.clone().json() as PinmeResponse | { error?: { message?: string } } | { error?: string };
+    if ('data' in body && body.data && typeof body.data === 'object' && 'error' in body.data) {
+      return String((body.data as { error: unknown }).error);
+    }
+    if ('msg' in body && typeof body.msg === 'string' && body.msg) {
+      return body.msg;
+    }
+    if ('error' in body) {
+      const error = body.error;
+      if (typeof error === 'string') return error;
+      if (error && typeof error === 'object' && 'message' in error) {
+        return String((error as { message: unknown }).message);
+      }
+    }
+  } catch {
+    try {
+      const text = await resp.text();
+      if (text) return text;
+    } catch {
+      // Ignore and return fallback below.
+    }
+  }
+  return fallback;
+}
+```
+
+### Optional JSON Helper
+
+Use this helper for non-streaming `POST` calls. It returns the raw OpenRouter JSON on success.
+
+```typescript
+async function callOpenRouterJSON<T>(url: string, apiKey: string, body: unknown): Promise<{ data?: T; error?: string }> {
   let resp: Response;
   try {
     resp = await fetch(url, {
@@ -234,23 +333,10 @@ async function callPinmeAPI<T>(url: string, apiKey: string, body: unknown): Prom
   }
 
   if (!resp.ok) {
-    try {
-      const err = await resp.json() as PinmeResponse;
-      return { error: err.data && typeof err.data === 'object' && 'error' in err.data
-        ? (err.data as { error: string }).error
-        : err.msg || `HTTP ${resp.status}` };
-    } catch {
-      return { error: `HTTP ${resp.status}` };
-    }
+    return { error: await extractPinmeOpenRouterError(resp) };
   }
 
-  const result = await resp.json() as PinmeResponse<T>;
-  if (result.code !== 200) {
-    return { error: result.data && typeof result.data === 'object' && 'error' in result.data
-      ? (result.data as { error: string }).error
-      : result.msg };
-  }
-  return { data: result.data as T };
+  return { data: await resp.json() as T };
 }
 ```
 
@@ -260,8 +346,8 @@ async function callPinmeAPI<T>(url: string, apiKey: string, body: unknown): Prom
 const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
 
 // Call LLM (non-streaming)
-const llmResult = await callPinmeAPI<{ choices: Array<{ message: { content: string } }> }>(
-  `${baseUrl}/api/v1/chat/completions?project_name=${projectName}`, env.API_KEY,
+const llmResult = await callOpenRouterJSON<{ choices: Array<{ message: { content: string } }> }>(
+  `${baseUrl}/api/v1/chat/completions?project_name=${encodeURIComponent(env.PROJECT_NAME)}`, env.API_KEY,
   { model: 'openai/gpt-4o-mini', messages: [{ role: 'user', content: 'Hi' }] },
 );
 if (llmResult.error) return json({ error: llmResult.error }, 502);
