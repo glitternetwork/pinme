@@ -91,11 +91,15 @@ export async function resolveUploadUrls(
     pinmeUrl?: string;
     shortUrl?: string;
   },
+  projectName?: string,
   uid?: string,
 ): Promise<{ publicUrl: string; managementUrl: string }> {
   const resolvedUid = uid?.trim() || getUid();
   const encryptedCID = encryptHash(contentHash, APP_CONFIG.secretKey, resolvedUid);
-  const managementUrl = `${APP_CONFIG.ipfsPreviewUrl}${encryptedCID}`;
+  const normalizedProjectName = projectName?.trim();
+  const managementUrl = normalizedProjectName
+    ? `${APP_CONFIG.projectPeviewUrl}${normalizedProjectName}`
+    : `${APP_CONFIG.ipfsPreviewUrl}${encryptedCID}`;
   const publicUrl =
     (await formatPreferredUrl(urls?.dnsUrl)) ||
     (await formatPreferredUrl(urls?.pinmeUrl, { appendRootDomain: true })) ||
@@ -134,6 +138,7 @@ export async function uploadPath(
       pinmeUrl: result.pinmeUrl,
       shortUrl: result.shortUrl,
     },
+    options.projectName,
     options.uid,
   );
   return {

@@ -8,6 +8,7 @@ import { checkDomainAvailable, bindPinmeDomain, getRootDomain } from './utils/pi
 import { getAuthConfig } from './utils/webLogin';
 import { APP_CONFIG } from './utils/config';
 import { uploadPath } from './services/uploadService';
+import { printHighlightedUrl } from './utils/urlDisplay';
 // get from environment variables
 
 import { checkNodeVersion } from './utils/checkNodeVersion';
@@ -126,8 +127,11 @@ export default async (options?: ImportOptions): Promise<void> => {
               figlet.textSync('Successful', { horizontalLayout: 'full' }),
             ),
           );
-          console.log(chalk.cyan(`URL:`));
-          console.log(chalk.cyan(`${APP_CONFIG.ipfsPreviewUrl}${encryptedCID}`));
+          printHighlightedUrl(
+            'URL',
+            `${APP_CONFIG.ipfsPreviewUrl}${encryptedCID}`,
+            'primary',
+          );
           // optional: bind domain after import
           if (domainArg) {
             console.log(chalk.blue(`Binding domain: ${domainArg} with CID: ${result.contentHash}`));
@@ -189,8 +193,11 @@ export default async (options?: ImportOptions): Promise<void> => {
               figlet.textSync('Successful', { horizontalLayout: 'full' }),
             ),
           );
-          console.log(chalk.cyan(`URL:`));
-          console.log(chalk.cyan(`${APP_CONFIG.ipfsPreviewUrl}${encryptedCID}`));
+          printHighlightedUrl(
+            'URL',
+            `${APP_CONFIG.ipfsPreviewUrl}${encryptedCID}`,
+            'primary',
+          );
           if (domainArg) {
             console.log(chalk.blue(`Binding domain: ${domainArg} with CID: ${result.contentHash}`));
             const ok = await bindPinmeDomain(domainArg, result.contentHash);

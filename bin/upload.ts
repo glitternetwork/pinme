@@ -3,11 +3,21 @@ import chalk from 'chalk';
 import inquirer from 'inquirer';
 import figlet from 'figlet';
 import fs from 'fs';
-import { checkDomainAvailable, bindPinmeDomain, bindDnsDomainV4, getWalletBalance } from './utils/pinmeApi';
+import {
+  checkDomainAvailable,
+  bindPinmeDomain,
+  bindDnsDomainV4,
+  getWalletBalance,
+} from './utils/pinmeApi';
 import { getAuthConfig } from './utils/webLogin';
 import { APP_CONFIG } from './utils/config';
-import { isDnsDomain, normalizeDomain, validateDnsDomain } from './utils/domainValidator';
+import {
+  isDnsDomain,
+  normalizeDomain,
+  validateDnsDomain,
+} from './utils/domainValidator';
 import { resolveUploadUrls, uploadPath } from './services/uploadService';
+import { printHighlightedUrl } from './utils/urlDisplay';
 
 import { checkNodeVersion } from './utils/checkNodeVersion';
 checkNodeVersion();
@@ -47,18 +57,11 @@ async function printUploadUrls(result: {
       pinmeUrl: result.pinmeUrl,
       shortUrl: result.shortUrl,
     },
+    projectName,
   );
 
-  if (projectName) {
-    console.log(chalk.cyan(`URL:`));
-    console.log(chalk.cyan(publicUrl));
-    console.log(chalk.cyan(`Management page:`));
-    console.log(chalk.cyan(managementUrl));
-    return;
-  }
-
-  console.log(chalk.cyan(`URL:`));
-  console.log(chalk.cyan(publicUrl));
+  printHighlightedUrl('URL', publicUrl, 'primary');
+  printHighlightedUrl('Management URL', managementUrl, 'management');
 }
 
 function getDomainFromArgs(): string | null {
@@ -75,15 +78,23 @@ function getDnsFromArgs(): boolean {
   return args.includes('--dns') || args.includes('-D');
 }
 
-async function checkWalletBalanceStatus(authConfig: { address: string; token: string }): Promise<boolean> {
+async function checkWalletBalanceStatus(authConfig: {
+  address: string;
+  token: string;
+}): Promise<boolean> {
   console.log(chalk.blue('Checking wallet balance...'));
   try {
-    const balanceResult = await getWalletBalance(authConfig.address, authConfig.token);
+    const balanceResult = await getWalletBalance(
+      authConfig.address,
+      authConfig.token,
+    );
     const balance = Number(balanceResult.data?.wallet_balance_usd ?? 0);
     if (!Number.isFinite(balance) || balance <= 0) {
       return false;
     }
-    console.log(chalk.green(`Wallet balance available: $${balance.toFixed(2)}`));
+    console.log(
+      chalk.green(`Wallet balance available: $${balance.toFixed(2)}`),
+    );
     return true;
   } catch (e: any) {
     if (e.message === 'Token expired') {
@@ -105,14 +116,23 @@ async function bindDomain(
   if (isDns) {
     // DNS domain binding
     console.log(chalk.blue('Binding DNS domain...'));
-    const dnsResult = await bindDnsDomainV4(displayDomain, contentHash, authConfig.address, authConfig.token);
+    const dnsResult = await bindDnsDomainV4(
+      displayDomain,
+      contentHash,
+      authConfig.address,
+      authConfig.token,
+    );
     if (dnsResult.code !== 200) {
       console.log(chalk.red(`DNS binding failed: ${dnsResult.msg}`));
       return false;
     }
     console.log(chalk.green(`DNS bind success: ${displayDomain}`));
     console.log(chalk.white(`Visit: https://${displayDomain}`));
-    console.log(chalk.cyan('\n📚 DNS Setup Guide: https://pinme.eth.limo/#/docs?id=custom-domain'));
+    console.log(
+      chalk.cyan(
+        '\n📚 DNS Setup Guide: https://pinme.eth.limo/#/docs?id=custom-domain',
+      ),
+    );
   } else {
     // Pinme subdomain binding
     console.log(chalk.blue('Binding Pinme subdomain...'));
@@ -163,7 +183,9 @@ export default async (options?: UploadOptions): Promise<void> => {
 
       // Auto-detect domain type
       const isDns = dnsArg || (domainArg ? isDnsDomain(domainArg) : false);
-      const displayDomain = domainArg?.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      const displayDomain = domainArg
+        ?.replace(/^https?:\/\//, '')
+        .replace(/\/$/, '');
 
       // Validate DNS domain format
       if (isDns && domainArg) {
@@ -179,7 +201,11 @@ export default async (options?: UploadOptions): Promise<void> => {
         try {
           const hasWalletBalance = await checkWalletBalanceStatus(authConfig);
           if (!hasWalletBalance) {
-            console.log(chalk.red('Insufficient wallet balance. Please recharge your wallet first.'));
+            console.log(
+              chalk.red(
+                'Insufficient wallet balance. Please recharge your wallet first.',
+              ),
+            );
             return;
           }
         } catch (e: any) {
@@ -229,9 +255,7 @@ export default async (options?: UploadOptions): Promise<void> => {
       }
 
       console.log(
-        chalk.cyan(
-          figlet.textSync('Successful', { horizontalLayout: 'full' }),
-        ),
+        chalk.cyan(figlet.textSync('Successful', { horizontalLayout: 'full' })),
       );
       await printUploadUrls(result);
 
@@ -274,7 +298,9 @@ export default async (options?: UploadOptions): Promise<void> => {
 
       // Auto-detect domain type
       const isDns = dnsArg || (domainArg ? isDnsDomain(domainArg) : false);
-      const displayDomain = domainArg?.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      const displayDomain = domainArg
+        ?.replace(/^https?:\/\//, '')
+        .replace(/\/$/, '');
 
       // Validate DNS domain format
       if (isDns && domainArg) {
@@ -290,7 +316,11 @@ export default async (options?: UploadOptions): Promise<void> => {
         try {
           const hasWalletBalance = await checkWalletBalanceStatus(authConfig);
           if (!hasWalletBalance) {
-            console.log(chalk.red('Insufficient wallet balance. Please recharge your wallet first.'));
+            console.log(
+              chalk.red(
+                'Insufficient wallet balance. Please recharge your wallet first.',
+              ),
+            );
             return;
           }
         } catch (e: any) {
@@ -340,9 +370,7 @@ export default async (options?: UploadOptions): Promise<void> => {
       }
 
       console.log(
-        chalk.cyan(
-          figlet.textSync('Successful', { horizontalLayout: 'full' }),
-        ),
+        chalk.cyan(figlet.textSync('Successful', { horizontalLayout: 'full' })),
       );
       await printUploadUrls(result);
       if (domainArg) {
@@ -351,7 +379,7 @@ export default async (options?: UploadOptions): Promise<void> => {
             `Binding domain: ${displayDomain} with CID: ${result.contentHash}`,
           ),
         );
-        
+
         try {
           await bindDomain(domainArg, result.contentHash, isDns, authConfig);
         } catch (e: any) {

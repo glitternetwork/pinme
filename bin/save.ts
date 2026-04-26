@@ -21,8 +21,9 @@ import {
   createConfigError,
   printCliError,
 } from './utils/cliError';
-import { getPinmeApiUrl } from './utils/config';
+import { APP_CONFIG, getPinmeApiUrl } from './utils/config';
 import { uploadPath } from './services/uploadService';
+import { printHighlightedUrl } from './utils/urlDisplay';
 
 const PROJECT_DIR = process.cwd();
 interface SaveOptions {
@@ -48,6 +49,10 @@ function loadConfig() {
   return {
     project_name: projectNameMatch?.[1] || '',
   };
+}
+
+function getProjectManagementUrl(projectName: string): string {
+  return `${APP_CONFIG.projectPeviewUrl}${projectName}`;
 }
 // ============ 后端部署 ============
 
@@ -411,7 +416,12 @@ export default async function saveCmd(options: SaveOptions): Promise<void> {
     }
 
     console.log(chalk.blue('\n--- Access ---'));
-    console.log(chalk.white(`Frontend URL: ${finalFrontendUrl}`));
+    printHighlightedUrl('Frontend URL', finalFrontendUrl, 'primary');
+    printHighlightedUrl(
+      'Project Management URL',
+      getProjectManagementUrl(projectName),
+      'management',
+    );
     console.log(chalk.green('\nDeployment complete.'));
     process.exit(0);
   } catch (error: any) {

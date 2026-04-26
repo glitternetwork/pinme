@@ -19,15 +19,16 @@ export const APP_CONFIG = {
   pinmeApiBase: trimTrailingSlash(process.env.PINME_API_BASE || ''),
   ipfsApiUrl: trimTrailingSlash(process.env.IPFS_API_URL || ''),
   carApiBase: trimTrailingSlash(
-    process.env.CAR_API_BASE
-      || process.env.IPFS_API_URL
-      || 'http://ipfs-proxy.opena.chat/api/v3',
+    process.env.CAR_API_BASE ||
+      process.env.IPFS_API_URL ||
+      'http://ipfs-proxy.opena.chat/api/v3',
   ),
   pinmeWebUrl: trimTrailingSlash(
     process.env.PINME_WEB_URL || DEFAULT_PINME_WEB_URL,
   ),
   pinmeCheckDomainPath: process.env.PINME_CHECK_DOMAIN_PATH || '/check_domain',
   ipfsPreviewUrl: process.env.IPFS_PREVIEW_URL || '',
+  projectPeviewUrl: process.env.PROJECT_PREVIEW_URL || '',
   secretKey: process.env.SECRET_KEY,
   pinmeProjectName: process.env.PINME_PROJECT_NAME?.trim(),
   upload: {

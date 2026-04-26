@@ -12,8 +12,9 @@ import {
   createConfigError,
   printCliError,
 } from './utils/cliError';
-import { getPinmeApiUrl } from './utils/config';
+import { APP_CONFIG, getPinmeApiUrl } from './utils/config';
 import { uploadPath } from './services/uploadService';
+import { printHighlightedUrl } from './utils/urlDisplay';
 
 // Template directory - relative to bin folder (works both in dev and npm)
 const PROJECT_DIR = process.cwd();
@@ -93,6 +94,10 @@ function updateFrontendUrlInConfig(configPath: string, frontendUrl: string): voi
   }
 
   fs.writeFileSync(configPath, config);
+}
+
+function getProjectManagementUrl(projectName: string): string {
+  return `${APP_CONFIG.projectPeviewUrl}${projectName}`;
 }
 
 /**
@@ -561,7 +566,7 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
           projectName: workerData.project_name,
           uid: headers['token-address'],
         });
-        console.log(chalk.green(`   Frontend uploaded to IPFS: ${uploadResult.publicUrl}`));
+        printHighlightedUrl('Frontend URL', uploadResult.publicUrl, 'primary');
         updateFrontendUrlInConfig(
           path.join(targetDir, 'pinme.toml'),
           uploadResult.publicUrl,
@@ -576,6 +581,11 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
     console.log(chalk.gray(`\nProject Details:`));
     console.log(chalk.gray(`   API Domain: ${workerData.api_domain}`));
     console.log(chalk.gray(`   Project Name: ${workerData.project_name}`));
+    printHighlightedUrl(
+      'Project Management URL',
+      getProjectManagementUrl(workerData.project_name),
+      'management',
+    );
     console.log(chalk.gray(`\nNext steps:`));
     console.log(chalk.gray(`   cd ${projectName}`));
     console.log(chalk.gray(`   pinme save`));
