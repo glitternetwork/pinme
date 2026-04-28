@@ -1,4 +1,5 @@
 import chalk from 'chalk';
+import { printCliError } from './utils/cliError';
 import { getWalletBalance } from './utils/pinmeApi';
 import { getAuthConfig } from './utils/webLogin';
 
@@ -21,6 +22,6 @@ export default async function walletBalanceCmd(): Promise<void> {
     console.log(chalk.cyan('Wallet balance:'));
     console.log(chalk.green(`  USD: $${balance.toFixed(2)}`));
   } catch (e: any) {
-    console.log(chalk.red(`Failed to fetch wallet balance: ${e?.message || e}`));
+    printCliError(e, 'Failed to fetch wallet balance.');
   }
 }

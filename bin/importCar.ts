@@ -5,6 +5,7 @@ import figlet from 'figlet';
 import fs from 'fs';
 import CryptoJS from 'crypto-js';
 import { checkDomainAvailable, bindPinmeDomain, getRootDomain } from './utils/pinmeApi';
+import { printCliError } from './utils/cliError';
 import { getAuthConfig } from './utils/webLogin';
 import { APP_CONFIG } from './utils/config';
 import { uploadPath } from './services/uploadService';
@@ -147,7 +148,7 @@ export default async (options?: ImportOptions): Promise<void> => {
           console.log(chalk.green('\n🎉 import successful, program exit'));
         }
       } catch (error: any) {
-        console.error(chalk.red(`Error: ${error.message}`));
+        printCliError(error, 'Import failed.');
       }
       process.exit(0);
     }
@@ -212,12 +213,11 @@ export default async (options?: ImportOptions): Promise<void> => {
           console.log(chalk.green('\n🎉 import successful, program exit'));
         }
       } catch (error: any) {
-        console.error(chalk.red(`Error: ${error.message}`));
+        printCliError(error, 'Import failed.');
       }
       process.exit(0);
     }
   } catch (error: any) {
-    console.error(chalk.red(`error executing: ${error.message}`));
-    console.error(error.stack);
+    printCliError(error, 'Import failed.');
   }
 };

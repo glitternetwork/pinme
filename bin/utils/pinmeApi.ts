@@ -109,6 +109,7 @@ export async function checkDomainAvailable(
   // Endpoint may not be fixed, prioritize environment variable, then try two common paths
   const configured = APP_CONFIG.pinmeCheckDomainPath;
   const fallbacks = [configured, '/check_domain_available'];
+  let lastRecoverableError: any;
 
   for (const p of fallbacks) {
     try {
@@ -125,10 +126,21 @@ export async function checkDomainAvailable(
         showTokenExpiredHint();
         throw new Error('Token expired');
       }
-      // 404/405/500 etc., continue trying next path
+
+      const status = e?.response?.status;
+      if (status && ![404, 405].includes(status)) {
+        throw e;
+      }
+
+      lastRecoverableError = e;
     }
   }
-  // If all attempts fail, return unknown state, let subsequent bind return error message
+
+  if (lastRecoverableError) {
+    throw lastRecoverableError;
+  }
+
+  // If all attempts fail silently, return unknown state and let the bind step decide.
   return { is_valid: true };
 }
 

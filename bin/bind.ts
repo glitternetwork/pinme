@@ -2,6 +2,8 @@ import path from 'path';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import { checkDomainAvailable, bindPinmeDomain, bindDnsDomainV4, getRootDomain, getWalletBalance } from './utils/pinmeApi';
+import { printCliError } from './utils/cliError';
+import { getWalletRechargeUrl } from './utils/config';
 import { getAuthConfig } from './utils/webLogin';
 import { isDnsDomain, normalizeDomain, validateDnsDomain } from './utils/domainValidator';
 import { uploadPath } from './services/uploadService';
@@ -44,7 +46,7 @@ async function checkWalletBalanceStatus(authConfig: { address: string; token: st
     console.log(chalk.green(`Wallet balance available: $${balance.toFixed(2)}`));
     return true;
   } catch (e: any) {
-    if (e.message === 'Token expired') {
+    if (e.message === 'Token expired' || e?.name === 'CliError') {
       throw e;
     }
     console.log(chalk.yellow('Failed to check wallet balance, continuing...'));
@@ -98,6 +100,7 @@ export default async function bindCmd(): Promise<void> {
       const hasWalletBalance = await checkWalletBalanceStatus(authConfig);
       if (!hasWalletBalance) {
         console.log(chalk.red('Insufficient wallet balance. Please recharge your wallet first.'));
+        console.log(chalk.cyan(`Recharge URL: ${getWalletRechargeUrl()}`));
         return;
       }
     } catch (e: any) {
@@ -164,6 +167,6 @@ export default async function bindCmd(): Promise<void> {
       throw e;
     }
   } catch (e: any) {
-    console.log(chalk.red(`Execution failed: ${e?.message || e}`));
+    printCliError(e, 'Bind failed.');
   }
 }

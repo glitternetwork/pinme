@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import dayjs from 'dayjs';
+import { printCliError } from './utils/cliError';
 import { getMyDomains } from './utils/pinmeApi';
 
 export default async function myDomainsCmd(): Promise<void> {
@@ -25,8 +26,7 @@ export default async function myDomainsCmd(): Promise<void> {
       console.log(chalk.cyan('-'.repeat(80)));
     });
   } catch (e: any) {
-    console.log(chalk.red(`Failed to fetch domains: ${e?.message || e}`));
+    printCliError(e, 'Failed to fetch domains.');
   }
 }
-
 

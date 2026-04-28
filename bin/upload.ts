@@ -10,12 +10,13 @@ import {
   getWalletBalance,
 } from './utils/pinmeApi';
 import { getAuthConfig } from './utils/webLogin';
-import { APP_CONFIG } from './utils/config';
+import { APP_CONFIG, getWalletRechargeUrl } from './utils/config';
 import {
   isDnsDomain,
   normalizeDomain,
   validateDnsDomain,
 } from './utils/domainValidator';
+import { printCliError } from './utils/cliError';
 import { resolveUploadUrls, uploadPath } from './services/uploadService';
 import { printHighlightedUrl } from './utils/urlDisplay';
 
@@ -97,7 +98,7 @@ async function checkWalletBalanceStatus(authConfig: {
     );
     return true;
   } catch (e: any) {
-    if (e.message === 'Token expired') {
+    if (e.message === 'Token expired' || e?.name === 'CliError') {
       throw e;
     }
     console.log(chalk.yellow('Failed to check wallet balance, continuing...'));
@@ -206,6 +207,7 @@ export default async (options?: UploadOptions): Promise<void> => {
                 'Insufficient wallet balance. Please recharge your wallet first.',
               ),
             );
+            console.log(chalk.cyan(`Recharge URL: ${getWalletRechargeUrl()}`));
             return;
           }
         } catch (e: any) {
@@ -245,7 +247,7 @@ export default async (options?: UploadOptions): Promise<void> => {
           uid: authConfig?.address,
         });
       } catch (error: any) {
-        console.error(chalk.red(`Upload error: ${error.message}`));
+        printCliError(error, 'Upload failed.');
         process.exit(1);
       }
 
@@ -321,6 +323,7 @@ export default async (options?: UploadOptions): Promise<void> => {
                 'Insufficient wallet balance. Please recharge your wallet first.',
               ),
             );
+            console.log(chalk.cyan(`Recharge URL: ${getWalletRechargeUrl()}`));
             return;
           }
         } catch (e: any) {
@@ -360,7 +363,7 @@ export default async (options?: UploadOptions): Promise<void> => {
           uid: authConfig?.address,
         });
       } catch (error: any) {
-        console.error(chalk.red(`Upload error: ${error.message}`));
+        printCliError(error, 'Upload failed.');
         process.exit(1);
       }
 
@@ -393,7 +396,6 @@ export default async (options?: UploadOptions): Promise<void> => {
       process.exit(0);
     }
   } catch (error: any) {
-    console.error(chalk.red(`error executing: ${error.message}`));
-    console.error(error.stack);
+    printCliError(error, 'Upload failed.');
   }
 };

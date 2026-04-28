@@ -14,6 +14,9 @@ function readNumberEnv(name: string, fallback: number): number {
 }
 
 const DEFAULT_PINME_WEB_URL = 'http://localhost:5173';
+const PROD_WALLET_RECHARGE_URL = 'https://pinme.eth.limo/#/profile?tab=wallet';
+const TEST_WALLET_RECHARGE_URL =
+  'https://test-pinme.pinit.eth.limo/#/profile?tab=wallet';
 
 export const APP_CONFIG = {
   pinmeApiBase: trimTrailingSlash(process.env.PINME_API_BASE || ''),
@@ -54,4 +57,22 @@ export function getIpfsApiUrl(pathname: string): string {
 export function getCarApiUrl(pathname: string): string {
   const normalizedPath = pathname.startsWith('/') ? pathname : `/${pathname}`;
   return `${APP_CONFIG.carApiBase}${normalizedPath}`;
+}
+
+function includesAny(value: string, markers: string[]): boolean {
+  return markers.some((marker) => value.includes(marker));
+}
+
+export function getWalletRechargeUrl(): string {
+  const candidates = [APP_CONFIG.ipfsApiUrl].filter(Boolean);
+
+  if (
+    candidates.some((candidate) =>
+      includesAny(candidate, ['test-pinme', 'localhost:5173', 'benny1996.win']),
+    )
+  ) {
+    return TEST_WALLET_RECHARGE_URL;
+  }
+
+  return PROD_WALLET_RECHARGE_URL;
 }
