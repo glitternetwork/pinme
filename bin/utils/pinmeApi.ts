@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { createCarApiClient, createPinmeApiClient } from './apiClient';
 import { APP_CONFIG } from './config';
+import { isDnsDomain } from './domainValidator';
 
 // Token expired error codes
 const TOKEN_EXPIRED_CODES = [
@@ -86,7 +87,9 @@ export interface GetRootDomainResponse {
 
 let rootDomainCache: string | null = null;
 
-export async function getRootDomain(forceRefresh: boolean = false): Promise<string> {
+export async function getRootDomain(
+  forceRefresh: boolean = false,
+): Promise<string> {
   if (!forceRefresh && rootDomainCache) {
     return rootDomainCache;
   }
@@ -105,10 +108,15 @@ export async function getRootDomain(forceRefresh: boolean = false): Promise<stri
 export async function checkDomainAvailable(
   domainName: string,
 ): Promise<CheckDomainResult> {
+  if (isDnsDomain(domainName)) {
+    return await {
+      is_valid: true,
+    };
+  }
   const client = createPinmeApiClient();
   // Endpoint may not be fixed, prioritize environment variable, then try two common paths
   const configured = APP_CONFIG.pinmeCheckDomainPath;
-  const fallbacks = [configured, '/check_domain_available'];
+  const fallbacks = [configured];
   let lastRecoverableError: any;
 
   for (const p of fallbacks) {

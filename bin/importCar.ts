@@ -4,7 +4,11 @@ import inquirer from 'inquirer';
 import figlet from 'figlet';
 import fs from 'fs';
 import CryptoJS from 'crypto-js';
-import { checkDomainAvailable, bindPinmeDomain, getRootDomain } from './utils/pinmeApi';
+import {
+  checkDomainAvailable,
+  bindPinmeDomain,
+  getRootDomain,
+} from './utils/pinmeApi';
 import { printCliError } from './utils/cliError';
 import { getAuthConfig } from './utils/webLogin';
 import { APP_CONFIG } from './utils/config';
@@ -16,7 +20,11 @@ import { checkNodeVersion } from './utils/checkNodeVersion';
 checkNodeVersion();
 
 // encrypt the hash with optional uid (device id)
-function encryptHash(contentHash: string, key: string | undefined, uid?: string): string {
+function encryptHash(
+  contentHash: string,
+  key: string | undefined,
+  uid?: string,
+): string {
   try {
     if (!key) {
       throw new Error('Secret key not found');
@@ -108,7 +116,11 @@ export default async (options?: ImportOptions): Promise<void> => {
       if (domainArg) {
         const check = await checkDomainAvailable(domainArg);
         if (!check.is_valid) {
-          console.log(chalk.red(`Domain not available: ${check.error || 'unknown reason'}`));
+          console.log(
+            chalk.red(
+              `Domain not available: ${check.error || 'unknown reason'}`,
+            ),
+          );
           return;
         }
         console.log(chalk.green(`Domain available: ${domainArg}`));
@@ -122,7 +134,11 @@ export default async (options?: ImportOptions): Promise<void> => {
         });
         if (result) {
           const uid = getUid();
-          const encryptedCID = encryptHash(result.contentHash, APP_CONFIG.secretKey, uid);
+          const encryptedCID = encryptHash(
+            result.contentHash,
+            APP_CONFIG.secretKey,
+            uid,
+          );
           console.log(
             chalk.cyan(
               figlet.textSync('Successful', { horizontalLayout: 'full' }),
@@ -135,12 +151,20 @@ export default async (options?: ImportOptions): Promise<void> => {
           );
           // optional: bind domain after import
           if (domainArg) {
-            console.log(chalk.blue(`Binding domain: ${domainArg} with CID: ${result.contentHash}`));
+            console.log(
+              chalk.blue(
+                `Binding domain: ${domainArg} with CID: ${result.contentHash}`,
+              ),
+            );
             const ok = await bindPinmeDomain(domainArg, result.contentHash);
             if (ok) {
               console.log(chalk.green(`Bind success: ${domainArg}`));
               const rootDomain = await getRootDomain();
-              console.log(chalk.white(`Visit (Pinme subdomain example): https://${domainArg}.${rootDomain}`));
+              console.log(
+                chalk.white(
+                  `Visit (Pinme subdomain example): https://${domainArg}.${rootDomain}`,
+                ),
+              );
             } else {
               console.log(chalk.red('Binding failed. Please try again later.'));
             }
@@ -173,7 +197,11 @@ export default async (options?: ImportOptions): Promise<void> => {
       if (domainArg) {
         const check = await checkDomainAvailable(domainArg);
         if (!check.is_valid) {
-          console.log(chalk.red(`Domain not available: ${check.error || 'unknown reason'}`));
+          console.log(
+            chalk.red(
+              `Domain not available: ${check.error || 'unknown reason'}`,
+            ),
+          );
           return;
         }
         console.log(chalk.green(`Domain available: ${domainArg}`));
@@ -188,7 +216,11 @@ export default async (options?: ImportOptions): Promise<void> => {
 
         if (result) {
           const uid = getUid();
-          const encryptedCID = encryptHash(result.contentHash, APP_CONFIG.secretKey, uid);
+          const encryptedCID = encryptHash(
+            result.contentHash,
+            APP_CONFIG.secretKey,
+            uid,
+          );
           console.log(
             chalk.cyan(
               figlet.textSync('Successful', { horizontalLayout: 'full' }),
@@ -200,12 +232,20 @@ export default async (options?: ImportOptions): Promise<void> => {
             'primary',
           );
           if (domainArg) {
-            console.log(chalk.blue(`Binding domain: ${domainArg} with CID: ${result.contentHash}`));
+            console.log(
+              chalk.blue(
+                `Binding domain: ${domainArg} with CID: ${result.contentHash}`,
+              ),
+            );
             const ok = await bindPinmeDomain(domainArg, result.contentHash);
             if (ok) {
               console.log(chalk.green(`Bind success: ${domainArg}`));
               const rootDomain = await getRootDomain();
-              console.log(chalk.white(`Visit (Pinme subdomain example): https://${domainArg}.${rootDomain}`));
+              console.log(
+                chalk.white(
+                  `Visit (Pinme subdomain example): https://${domainArg}.${rootDomain}`,
+                ),
+              );
             } else {
               console.log(chalk.red('Binding failed. Please try again later.'));
             }

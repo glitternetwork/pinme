@@ -1,11 +1,21 @@
 import path from 'path';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { checkDomainAvailable, bindPinmeDomain, bindDnsDomainV4, getRootDomain, getWalletBalance } from './utils/pinmeApi';
+import {
+  checkDomainAvailable,
+  bindPinmeDomain,
+  bindDnsDomainV4,
+  getRootDomain,
+  getWalletBalance,
+} from './utils/pinmeApi';
 import { printCliError, printRechargeUrl } from './utils/cliError';
 import { getWalletRechargeUrl } from './utils/config';
 import { getAuthConfig } from './utils/webLogin';
-import { isDnsDomain, normalizeDomain, validateDnsDomain } from './utils/domainValidator';
+import {
+  isDnsDomain,
+  normalizeDomain,
+  validateDnsDomain,
+} from './utils/domainValidator';
 import { uploadPath } from './services/uploadService';
 
 interface Args {
@@ -13,7 +23,6 @@ interface Args {
   targetPath?: string;
   dns?: boolean;
 }
-
 
 function parseArgs(): Args {
   // Usage: pinme bind <path> --domain <name> [--dns]
@@ -35,15 +44,23 @@ function parseArgs(): Args {
   return res;
 }
 
-async function checkWalletBalanceStatus(authConfig: { address: string; token: string }): Promise<boolean> {
+async function checkWalletBalanceStatus(authConfig: {
+  address: string;
+  token: string;
+}): Promise<boolean> {
   console.log(chalk.blue('Checking wallet balance...'));
   try {
-    const balanceResult = await getWalletBalance(authConfig.address, authConfig.token);
+    const balanceResult = await getWalletBalance(
+      authConfig.address,
+      authConfig.token,
+    );
     const balance = Number(balanceResult.data?.wallet_balance_usd ?? 0);
     if (!Number.isFinite(balance) || balance <= 0) {
       return false;
     }
-    console.log(chalk.green(`Wallet balance available: $${balance.toFixed(2)}`));
+    console.log(
+      chalk.green(`Wallet balance available: $${balance.toFixed(2)}`),
+    );
     return true;
   } catch (e: any) {
     if (e.message === 'Token expired' || e?.name === 'CliError') {
@@ -61,24 +78,36 @@ export default async function bindCmd(): Promise<void> {
     // Check auth
     const authConfig = getAuthConfig();
     if (!authConfig) {
-      console.log(chalk.red('Please login first. Run: pinme set-appkey <AppKey>'));
+      console.log(
+        chalk.red('Please login first. Run: pinme set-appkey <AppKey>'),
+      );
       return;
     }
 
     if (!targetPath) {
       const ans = await inquirer.prompt([
-        { type: 'input', name: 'path', message: 'Enter the path to upload and bind: ' },
+        {
+          type: 'input',
+          name: 'path',
+          message: 'Enter the path to upload and bind: ',
+        },
       ]);
       targetPath = ans.path;
     }
     if (!domain) {
       const ans = await inquirer.prompt([
-        { type: 'input', name: 'domain', message: 'Enter the domain to bind (e.g., my-site or example.com): ' },
+        {
+          type: 'input',
+          name: 'domain',
+          message: 'Enter the domain to bind (e.g., my-site or example.com): ',
+        },
       ]);
       domain = ans.domain?.trim();
     }
     if (!targetPath || !domain) {
-      console.log(chalk.red('Missing parameters. Path and domain are required.'));
+      console.log(
+        chalk.red('Missing parameters. Path and domain are required.'),
+      );
       return;
     }
 
@@ -99,7 +128,11 @@ export default async function bindCmd(): Promise<void> {
     try {
       const hasWalletBalance = await checkWalletBalanceStatus(authConfig);
       if (!hasWalletBalance) {
-        console.log(chalk.red('Insufficient wallet balance. Please recharge your wallet first.'));
+        console.log(
+          chalk.red(
+            'Insufficient wallet balance. Please recharge your wallet first.',
+          ),
+        );
         printRechargeUrl(getWalletRechargeUrl());
         return;
       }
@@ -114,7 +147,9 @@ export default async function bindCmd(): Promise<void> {
     try {
       const check = await checkDomainAvailable(displayDomain);
       if (!check.is_valid) {
-        console.log(chalk.red(`Domain not available: ${check.error || 'unknown reason'}`));
+        console.log(
+          chalk.red(`Domain not available: ${check.error || 'unknown reason'}`),
+        );
         return;
       }
       console.log(chalk.green(`Domain available: ${displayDomain}`));
@@ -140,14 +175,23 @@ export default async function bindCmd(): Promise<void> {
       if (isDns) {
         // DNS domain binding
         console.log(chalk.blue('Binding DNS domain...'));
-        const dnsResult = await bindDnsDomainV4(displayDomain, up.contentHash, authConfig.address, authConfig.token);
+        const dnsResult = await bindDnsDomainV4(
+          displayDomain,
+          up.contentHash,
+          authConfig.address,
+          authConfig.token,
+        );
         if (dnsResult.code !== 200) {
           console.log(chalk.red(`DNS binding failed: ${dnsResult.msg}`));
           return;
         }
         console.log(chalk.green(`DNS bind success: ${displayDomain}`));
         console.log(chalk.white(`Visit: https://${displayDomain}`));
-        console.log(chalk.cyan('\n📚 DNS Setup Guide: https://pinme.eth.limo/#/docs?id=custom-domain'));
+        console.log(
+          chalk.cyan(
+            '\n📚 DNS Setup Guide: https://pinme.eth.limo/#/docs?id=custom-domain',
+          ),
+        );
       } else {
         // Pinme subdomain binding
         console.log(chalk.blue('Binding Pinme subdomain...'));
@@ -158,7 +202,9 @@ export default async function bindCmd(): Promise<void> {
         }
         console.log(chalk.green(`Bind success: ${displayDomain}`));
         const rootDomain = await getRootDomain();
-        console.log(chalk.white(`Visit: https://${displayDomain}.${rootDomain}`));
+        console.log(
+          chalk.white(`Visit: https://${displayDomain}.${rootDomain}`),
+        );
       }
     } catch (e: any) {
       if (e.message === 'Token expired') {
