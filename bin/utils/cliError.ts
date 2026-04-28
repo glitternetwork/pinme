@@ -87,6 +87,22 @@ function dedupeSuggestions(suggestions: string[]): string[] {
   return Array.from(new Set(suggestions.filter(Boolean)));
 }
 
+function getRechargeUrl(detail: string): string | null {
+  const prefix = 'Recharge URL: ';
+  if (!detail.startsWith(prefix)) {
+    return null;
+  }
+
+  return detail.slice(prefix.length).trim() || null;
+}
+
+export function printRechargeUrl(url: string, useErrorStream: boolean = false): void {
+  const output = useErrorStream ? console.error : console.log;
+  output('');
+  output(chalk.yellowBright.bold('Recharge URL:'));
+  output(chalk.blueBright.bold.underline(url));
+}
+
 function isInsufficientBalanceError(
   businessCode: string | undefined,
   ...messages: Array<string | undefined>
@@ -243,6 +259,11 @@ export function printCliError(error: unknown, fallbackSummary: string): void {
   }
 
   for (const detail of cliError.details) {
+    const rechargeUrl = getRechargeUrl(detail);
+    if (rechargeUrl) {
+      printRechargeUrl(rechargeUrl, true);
+      continue;
+    }
     console.error(chalk.gray(detail));
   }
 

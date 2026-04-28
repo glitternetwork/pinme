@@ -9,6 +9,7 @@ import {
   checkDirectorySizeLimit,
   formatSize,
 } from './uploadLimits';
+import { createApiError } from './cliError';
 import { saveUploadHistory } from './history';
 import { getUid } from './getDeviceId';
 import { getAuthHeaders } from './webLogin';
@@ -111,14 +112,34 @@ function extractAxiosErrorMessage(error: any): string {
 }
 
 function formatAxiosError(prefix: string, error: any): Error {
-  const status = error?.response?.status;
-  const message = extractAxiosErrorMessage(error);
+  return createApiError(
+    prefix,
+    error,
+    [],
+  );
+}
 
-  if (status) {
-    return new Error(`${prefix}: ${message} (status: ${status})`);
-  }
-
-  return new Error(`${prefix}: ${message}`);
+function createUploadBusinessError(
+  stage: string,
+  endpoint: string,
+  method: 'GET' | 'POST',
+  status: number | undefined,
+  data: unknown,
+): Error {
+  return createApiError(
+    stage,
+    {
+      response: {
+        status,
+        data,
+      },
+      config: {
+        url: endpoint,
+        method,
+      },
+    },
+    [`Endpoint: ${endpoint}`],
+  );
 }
 
 function logAxiosErrorDetails(prefix: string, error: any): void {
@@ -367,7 +388,13 @@ async function initChunkSession(
     if (code === 200 && data) {
       return data;
     }
-    throw new Error(`Session initialization failed: ${msg} (code: ${code})`);
+    throw createUploadBusinessError(
+      'Session initialization failed',
+      `${IPFS_API_URL}/chunk/init`,
+      'POST',
+      response.status,
+      response.data,
+    );
   } catch (error) {
     if (axios.isAxiosError(error)) {
       logAxiosErrorDetails('chunk/init failed', error);
@@ -416,7 +443,13 @@ async function uploadChunkWithAbort(
     if (code === 200 && data) {
       return data;
     }
-    throw new Error(`Chunk upload failed: ${msg} (code: ${code})`);
+    throw createUploadBusinessError(
+      'Chunk upload failed',
+      `${IPFS_API_URL}/chunk/upload`,
+      'POST',
+      response.status,
+      response.data,
+    );
   } catch (error: any) {
     if (error.name === 'CanceledError' || signal.aborted) {
       throw new Error('Request cancelled');
@@ -583,7 +616,13 @@ async function completeChunkUpload(
     if (code === 200 && data) {
       return data.trace_id;
     }
-    throw new Error(`Complete upload failed: ${msg} (code: ${code})`);
+    throw createUploadBusinessError(
+      'Complete upload failed',
+      `${IPFS_API_URL}/chunk/complete`,
+      'POST',
+      response.status,
+      response.data,
+    );
   } catch (error) {
     if (axios.isAxiosError(error)) {
       logAxiosErrorDetails('chunk/complete failed', error);
@@ -624,7 +663,13 @@ async function getChunkStatus(
     if (code === 200) {
       return data;
     }
-    throw new Error(`Server returned error: ${msg} (code: ${code})`);
+    throw createUploadBusinessError(
+      'Upload status check failed',
+      `${IPFS_API_URL}/up_status`,
+      'GET',
+      response.status,
+      response.data,
+    );
   } catch (error) {
     if (axios.isAxiosError(error)) {
       logAxiosErrorDetails('up_status failed', error);

@@ -16,7 +16,7 @@ import {
   normalizeDomain,
   validateDnsDomain,
 } from './utils/domainValidator';
-import { printCliError } from './utils/cliError';
+import { printCliError, printRechargeUrl } from './utils/cliError';
 import { resolveUploadUrls, uploadPath } from './services/uploadService';
 import { printHighlightedUrl } from './utils/urlDisplay';
 
@@ -207,7 +207,7 @@ export default async (options?: UploadOptions): Promise<void> => {
                 'Insufficient wallet balance. Please recharge your wallet first.',
               ),
             );
-            console.log(chalk.cyan(`Recharge URL: ${getWalletRechargeUrl()}`));
+            printRechargeUrl(getWalletRechargeUrl());
             return;
           }
         } catch (e: any) {
@@ -323,7 +323,7 @@ export default async (options?: UploadOptions): Promise<void> => {
                 'Insufficient wallet balance. Please recharge your wallet first.',
               ),
             );
-            console.log(chalk.cyan(`Recharge URL: ${getWalletRechargeUrl()}`));
+            printRechargeUrl(getWalletRechargeUrl());
             return;
           }
         } catch (e: any) {

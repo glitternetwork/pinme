@@ -1,5 +1,6 @@
 import chalk from 'chalk';
-import { printCliError } from './utils/cliError';
+import { printCliError, printRechargeUrl } from './utils/cliError';
+import { getWalletRechargeUrl } from './utils/config';
 import { getWalletBalance } from './utils/pinmeApi';
 import { getAuthConfig } from './utils/webLogin';
 
@@ -21,6 +22,11 @@ export default async function walletBalanceCmd(): Promise<void> {
 
     console.log(chalk.cyan('Wallet balance:'));
     console.log(chalk.green(`  USD: $${balance.toFixed(2)}`));
+
+    if (balance <= 0) {
+      console.log(chalk.red('Insufficient wallet balance. Please recharge your wallet first.'));
+      printRechargeUrl(getWalletRechargeUrl());
+    }
   } catch (e: any) {
     printCliError(e, 'Failed to fetch wallet balance.');
   }
