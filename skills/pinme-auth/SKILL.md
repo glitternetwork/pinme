@@ -15,7 +15,7 @@ export interface Env {
   DB: D1Database;
   API_KEY: string;       // 项目 API Key — 用于所有 auth 接口认证
   PROJECT_NAME: string;  // 项目名 — 所有 auth 接口必须同时传递
-  BASE_URL?: string;     // 可选，默认 https://pinme.dev
+  BASE_URL?: string;     // 可选，默认 https://pinme.cloud
 }
 ```
 
@@ -103,7 +103,7 @@ async function createAuthUser(
   env: Env,
   payload: { email: string; password: string; display_name?: string }
 ): Promise<{ user?: UserInfo; error?: string }> {
-  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
   const resp = await fetch(
     `${baseUrl}/api/v1/auth/create_user?project_name=${encodeURIComponent(env.PROJECT_NAME)}`,
     {
@@ -162,7 +162,7 @@ async function verifyAuthToken(
   env: Env,
   idToken: string
 ): Promise<{ uid?: string; email?: string; error?: string; emailNotVerified?: boolean }> {
-  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
   const resp = await fetch(
     `${baseUrl}/api/v1/auth/verify_token?project_name=${encodeURIComponent(env.PROJECT_NAME)}`,
     {
@@ -199,7 +199,7 @@ async function verifyAuthToken(
 
 ```typescript
 async function getAuthUser(env: Env, uid: string): Promise<{ user?: UserInfo; error?: string }> {
-  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
   const resp = await fetch(
     `${baseUrl}/api/v1/auth/user?project_name=${encodeURIComponent(env.PROJECT_NAME)}&uid=${encodeURIComponent(uid)}`,
     { method: 'GET', headers: { 'X-API-Key': env.API_KEY } }
@@ -235,7 +235,7 @@ async function listAuthUsers(
   env: Env,
   options: { pageToken?: string; maxResults?: number } = {}
 ): Promise<{ users?: UserInfo[]; nextPageToken?: string; error?: string }> {
-  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
   const url = new URL('/api/v1/auth/list_users', baseUrl);
   url.searchParams.set('project_name', env.PROJECT_NAME);
   if (options.pageToken) url.searchParams.set('page_token', options.pageToken);

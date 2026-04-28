@@ -17,11 +17,11 @@ export interface Env {
   DB: D1Database;
   API_KEY: string;       // Project API Key from create_worker
   PROJECT_NAME: string;  // Actual project_name from create_worker; must match API_KEY
-  BASE_URL?: string;     // Optional override for PinMe API base URL, defaults to https://pinme.dev
+  BASE_URL?: string;     // Optional override for PinMe API base URL, defaults to https://pinme.cloud
 }
 ```
 
-> `API_KEY` authenticates the Worker to PinMe. `PROJECT_NAME` is required for `chat/completions` and must belong to the same project as `API_KEY`. When `BASE_URL` is not set, use `https://pinme.dev`.
+> `API_KEY` authenticates the Worker to PinMe. `PROJECT_NAME` is required for `chat/completions` and must belong to the same project as `API_KEY`. When `BASE_URL` is not set, use `https://pinme.cloud`.
 
 ---
 
@@ -35,7 +35,7 @@ Use this when the Worker needs to list available OpenRouter models. The response
 
 ```typescript
 async function listModels(env: Env): Promise<unknown> {
-  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
   const resp = await fetch(`${baseUrl}/api/v1/models`, {
     headers: { 'X-API-Key': env.API_KEY },
   });
@@ -81,7 +81,7 @@ Always set `max_results` and `max_total_results` to keep search volume and cost 
 
 ```typescript
 async function searchWithLLM(env: Env, query: string): Promise<string> {
-  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
   const resp = await fetch(
     `${baseUrl}/api/v1/chat/completions?project_name=${encodeURIComponent(env.PROJECT_NAME)}`,
     {
@@ -157,7 +157,7 @@ async function callLLM(
   messages: Array<{ role: string; content: string }>,
   model = 'openai/gpt-4o-mini',
 ): Promise<{ content: string; error?: string }> {
-  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
   const resp = await fetch(
     `${baseUrl}/api/v1/chat/completions?project_name=${encodeURIComponent(env.PROJECT_NAME)}`,
     {
@@ -199,7 +199,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
 ```typescript
 async function handleChatStream(request: Request, env: Env): Promise<Response> {
   const body = await request.text();
-  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
 
   // Ensure stream=true in the request
   let parsed = JSON.parse(body);
@@ -343,7 +343,7 @@ async function callOpenRouterJSON<T>(url: string, apiKey: string, body: unknown)
 ### Usage Example
 
 ```typescript
-const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
 
 // Call LLM (non-streaming)
 const llmResult = await callOpenRouterJSON<{ choices: Array<{ message: { content: string } }> }>(

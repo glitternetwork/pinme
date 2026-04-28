@@ -16,11 +16,11 @@ The following environment variables are automatically injected when the Worker i
 export interface Env {
   DB: D1Database;
   API_KEY: string;      // Project API Key — used for send_email authentication
-  BASE_URL?: string;    // Optional override for PinMe API base URL, defaults to https://pinme.dev
+  BASE_URL?: string;    // Optional override for PinMe API base URL, defaults to https://pinme.cloud
 }
 ```
 
-> `API_KEY` is the sole credential for the Worker to call PinMe platform APIs. When `BASE_URL` is not set, it defaults to `https://pinme.dev`.
+> `API_KEY` is the sole credential for the Worker to call PinMe platform APIs. When `BASE_URL` is not set, it defaults to `https://pinme.cloud`.
 
 ---
 
@@ -65,7 +65,7 @@ export interface Env {
 
 ```typescript
 async function sendEmail(env: Env, to: string, subject: string, html: string): Promise<{ ok: boolean; error?: string }> {
-  const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+  const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
   const resp = await fetch(`${baseUrl}/api/v4/send_email`, {
     method: 'POST',
     headers: {
@@ -151,7 +151,7 @@ async function callPinmeAPI<T>(url: string, apiKey: string, body: unknown): Prom
 ### Usage Example
 
 ```typescript
-const baseUrl = env.BASE_URL ?? 'https://pinme.dev';
+const baseUrl = env.BASE_URL ?? 'https://pinme.cloud';
 
 // Send email
 const emailResult = await callPinmeAPI<{ ok: boolean }>(
