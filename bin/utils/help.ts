@@ -20,13 +20,16 @@ function showGeneralHelp(): void {
 
   console.log("COMMANDS:");
   console.log("  upload              Upload a file or directory to IPFS");
-  console.log("  bind                Upload and bind to a domain (requires VIP)");
+  console.log("  bind                Upload and bind to a domain (requires wallet balance)");
   console.log("  login               Login via browser (recommended)");
   console.log("  list                Show upload history");
   console.log("  ls                  Alias for 'list' command");
   console.log("  set-appkey          Set AppKey for authentication (alternative)");
   console.log("  show-appkey         Show current AppKey information (masked)");
   console.log("  appkey              Alias for 'show-appkey' command");
+  console.log("  wallet              Show current wallet balance");
+  console.log("  wallet-balance      Alias for 'wallet' command");
+  console.log("  balance             Alias for 'wallet' command");
   console.log("  logout              Log out and clear authentication");
   console.log("  help [command]      Show help for a specific command\n");
 
@@ -41,14 +44,14 @@ function showGeneralHelp(): void {
 // bind command help
 function showBindHelp(): void {
   console.log("COMMAND:");
-  console.log("  bind - Upload and bind to a domain (requires VIP)\n");
+  console.log("  bind - Upload and bind to a domain (requires wallet balance)\n");
 
   console.log("USAGE:");
   console.log("  pinme bind <path> [options]\n");
 
   console.log("DESCRIPTION:");
   console.log("  This command uploads files and binds them to a custom domain.");
-  console.log("  Domain binding requires VIP membership.\n");
+  console.log("  Domain binding deducts from your wallet balance.\n");
 
   console.log("OPTIONS:");
   console.log("  -d, --domain <name>  Domain name to bind (required)");
@@ -70,7 +73,7 @@ function showBindHelp(): void {
   console.log("  - Use --dns flag to force DNS domain mode\n");
 
   console.log("REQUIREMENTS:");
-  console.log("  - VIP membership required for all domain binding");
+  console.log("  - Sufficient wallet balance is required for domain binding");
   console.log("  - Valid AppKey must be set (run: pinme set-appkey <AppKey>)");
   console.log("  - For DNS domains, you must own the domain\n");
 
@@ -95,10 +98,10 @@ function showUploadHelp(): void {
   console.log("DESCRIPTION:");
   console.log("  This command uploads files or directories to IPFS.");
   console.log("  If no path is provided, it will start in interactive mode.");
-  console.log("  Supports --domain option to bind a custom domain after upload (requires VIP).\n");
+  console.log("  Supports --domain option to bind a custom domain after upload (requires wallet balance).\n");
 
   console.log("OPTIONS:");
-  console.log("  -d, --domain <name>  Domain name to bind (optional, requires VIP)");
+  console.log("  -d, --domain <name>  Domain name to bind (optional, requires wallet balance)");
   console.log("  --dns                Force DNS domain mode (optional, auto-detected)\n");
 
   console.log("EXAMPLES:");
@@ -118,7 +121,7 @@ function showUploadHelp(): void {
   console.log("  - Use --dns flag to force DNS domain mode\n");
 
   console.log("REQUIREMENTS:");
-  console.log("  - VIP membership required for domain binding");
+  console.log("  - Sufficient wallet balance is required for domain binding");
   console.log("  - Valid AppKey must be set (run: pinme login)");
   console.log("  - For DNS domains, you must own the domain\n");
 
@@ -208,6 +211,25 @@ function showShowAppKeyHelp(): void {
   console.log("  pinme appkey");
 }
 
+function showWalletBalanceHelp(): void {
+  console.log("COMMAND:");
+  console.log("  wallet - Show current wallet balance\n");
+
+  console.log("USAGE:");
+  console.log("  pinme wallet");
+  console.log("  pinme wallet-balance");
+  console.log("  pinme balance\n");
+
+  console.log("DESCRIPTION:");
+  console.log("  This command fetches the current wallet balance for the logged-in account.");
+  console.log("  The value is displayed in USD.\n");
+
+  console.log("EXAMPLES:");
+  console.log("  pinme wallet");
+  console.log("  pinme wallet-balance");
+  console.log("  pinme balance");
+}
+
 // logout command help
 function showLogoutHelp(): void {
   console.log("COMMAND:");
@@ -251,6 +273,11 @@ function showHelp(command?: string): void {
     case 'show-appkey':
     case 'appkey':
       showShowAppKeyHelp();
+      break;
+    case 'wallet':
+    case 'wallet-balance':
+    case 'balance':
+      showWalletBalanceHelp();
       break;
     case 'logout':
       showLogoutHelp();

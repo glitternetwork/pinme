@@ -49,8 +49,8 @@ function parseInput(input: string): { type: 'hash' | 'subname'; value: string } 
     return { type: 'hash', value: trimmedInput };
   }
   
-  // Case 3: Subname URL - https://3abt6ztu.pinit.eth.limo
-  const subnameUrlPattern = /https?:\/\/([a-zA-Z0-9]{6,12})\.pinit\.eth\.limo/i;
+  // Case 3: Subname URL - https://3abt6ztu.<root-domain>
+  const subnameUrlPattern = /https?:\/\/([a-zA-Z0-9]{6,12})\.[a-zA-Z0-9.-]+/i;
   const subnameUrlMatch = trimmedInput.match(subnameUrlPattern);
   if (subnameUrlMatch) {
     const subname = subnameUrlMatch[1];
@@ -90,7 +90,7 @@ export default async (options?: RemoveOptions): Promise<void> => {
         console.log(chalk.yellow('Supported formats:'));
         console.log(chalk.yellow('  - IPFS hash: bafybeig...'));
         console.log(chalk.yellow('  - Subname: 3abt6ztu'));
-        console.log(chalk.yellow('  - Subname URL: https://3abt6ztu.pinit.eth.limo'));
+        console.log(chalk.yellow('  - Subname URL: https://3abt6ztu.<root-domain>'));
         return;
       }
 
@@ -139,7 +139,7 @@ export default async (options?: RemoveOptions): Promise<void> => {
           }
           const parsedInput = parseInput(input.trim());
           if (!parsedInput) {
-            return 'Invalid format. Supported: IPFS hash, full URL (*), subname, or subname URL (*.pinit.eth.limo)';
+            return 'Invalid format. Supported: IPFS hash, full URL (*), subname, or subname URL (*.<root-domain>)';
           }
           return true;
         },

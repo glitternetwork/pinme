@@ -1,10 +1,10 @@
 import axios from 'axios';
 import chalk from 'chalk';
 import { getUid } from './getDeviceId';
+import { APP_CONFIG } from './config';
 
 // Get API base URL from environment variables
-const ipfsApiUrl =
-  process.env.IPFS_API_URL || 'https://ipfs.glitterprotocol.dev/api/v2';
+const ipfsApiUrl = APP_CONFIG.ipfsApiUrl;
 
 interface RemoveResponse {
   code: number;

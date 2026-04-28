@@ -6,6 +6,7 @@ import figlet from 'figlet';
 import fs from 'fs';
 import axios from 'axios';
 import ora from 'ora';
+import { printCliError } from './utils/cliError';
 import { requestCarExport, checkCarExportStatus } from './utils/pinmeApi';
 import { getUid } from './utils/getDeviceId';
 import { checkNodeVersion } from './utils/checkNodeVersion';
@@ -257,11 +258,9 @@ export default async (): Promise<void> => {
       }
     } catch (error: any) {
       spinner.fail(`Error: ${error.message}`);
-      console.error(chalk.red(`Export error: ${error.message}`));
+      printCliError(error, 'Export failed.');
     }
   } catch (error: any) {
-    console.error(chalk.red(`error executing: ${error.message}`));
-    console.error(error.stack);
+    printCliError(error, 'Export failed.');
   }
 };
-

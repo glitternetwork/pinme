@@ -2,21 +2,29 @@ import path from 'path';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import figlet from 'figlet';
-import upload from './utils/uploadToIpfsSplit';
 import fs from 'fs';
 import CryptoJS from 'crypto-js';
-import { checkDomainAvailable, bindPinmeDomain } from './utils/pinmeApi';
+import {
+  checkDomainAvailable,
+  bindPinmeDomain,
+  getRootDomain,
+} from './utils/pinmeApi';
+import { printCliError } from './utils/cliError';
 import { getAuthConfig } from './utils/webLogin';
-import { getDeviceId } from './utils/getDeviceId';
+import { APP_CONFIG } from './utils/config';
+import { uploadPath } from './services/uploadService';
+import { printHighlightedUrl } from './utils/urlDisplay';
 // get from environment variables
-const URL = process.env.IPFS_PREVIEW_URL;
-const secretKey = process.env.SECRET_KEY;
 
 import { checkNodeVersion } from './utils/checkNodeVersion';
 checkNodeVersion();
 
 // encrypt the hash with optional uid (device id)
-function encryptHash(contentHash: string, key: string | undefined, uid?: string): string {
+function encryptHash(
+  contentHash: string,
+  key: string | undefined,
+  uid?: string,
+): string {
   try {
     if (!key) {
       throw new Error('Secret key not found');
@@ -65,13 +73,13 @@ function getDomainFromArgs(): string | null {
   return null;
 }
 
-// Get uid: use address from auth if logged in, otherwise use deviceId
+// Upload/import now requires login. Use the authenticated address as uid.
 function getUid(): string {
   const auth = getAuthConfig();
   if (auth?.address) {
     return auth.address;
   }
-  return getDeviceId();
+  throw new Error('Please login first. Run: pinme login');
 }
 
 export default async (options?: ImportOptions): Promise<void> => {
@@ -85,6 +93,12 @@ export default async (options?: ImportOptions): Promise<void> => {
         whitespaceBreak: true,
       }),
     );
+
+    const auth = getAuthConfig();
+    if (!auth) {
+      console.log(chalk.red('Please login first. Run: pinme login'));
+      return;
+    }
 
     // if the parameter is passed, import directly, pinme import /path/to/dir
     const argPath = process.argv[3];
@@ -102,7 +116,11 @@ export default async (options?: ImportOptions): Promise<void> => {
       if (domainArg) {
         const check = await checkDomainAvailable(domainArg);
         if (!check.is_valid) {
-          console.log(chalk.red(`Domain not available: ${check.error || 'unknown reason'}`));
+          console.log(
+            chalk.red(
+              `Domain not available: ${check.error || 'unknown reason'}`,
+            ),
+          );
           return;
         }
         console.log(chalk.green(`Domain available: ${domainArg}`));
@@ -110,24 +128,43 @@ export default async (options?: ImportOptions): Promise<void> => {
 
       console.log(chalk.blue(`importing ${absolutePath} to ipfs as CAR...`));
       try {
-        const result = await upload(absolutePath, true); // importAsCar = true
+        const result = await uploadPath(absolutePath, {
+          importAsCar: true,
+          uid: getUid(),
+        });
         if (result) {
           const uid = getUid();
-          const encryptedCID = encryptHash(result.contentHash, secretKey, uid);
+          const encryptedCID = encryptHash(
+            result.contentHash,
+            APP_CONFIG.secretKey,
+            uid,
+          );
           console.log(
             chalk.cyan(
               figlet.textSync('Successful', { horizontalLayout: 'full' }),
             ),
           );
-          console.log(chalk.cyan(`URL:`));
-          console.log(chalk.cyan(`${URL}${encryptedCID}`));
+          printHighlightedUrl(
+            'URL',
+            `${APP_CONFIG.ipfsPreviewUrl}${encryptedCID}`,
+            'primary',
+          );
           // optional: bind domain after import
           if (domainArg) {
-            console.log(chalk.blue(`Binding domain: ${domainArg} with CID: ${result.contentHash}`));
+            console.log(
+              chalk.blue(
+                `Binding domain: ${domainArg} with CID: ${result.contentHash}`,
+              ),
+            );
             const ok = await bindPinmeDomain(domainArg, result.contentHash);
             if (ok) {
               console.log(chalk.green(`Bind success: ${domainArg}`));
-              console.log(chalk.white(`Visit (Pinme subdomain example): https://${domainArg}.pinit.eth.limo`));
+              const rootDomain = await getRootDomain();
+              console.log(
+                chalk.white(
+                  `Visit (Pinme subdomain example): https://${domainArg}.${rootDomain}`,
+                ),
+              );
             } else {
               console.log(chalk.red('Binding failed. Please try again later.'));
             }
@@ -135,7 +172,7 @@ export default async (options?: ImportOptions): Promise<void> => {
           console.log(chalk.green('\n🎉 import successful, program exit'));
         }
       } catch (error: any) {
-        console.error(chalk.red(`Error: ${error.message}`));
+        printCliError(error, 'Import failed.');
       }
       process.exit(0);
     }
@@ -160,7 +197,11 @@ export default async (options?: ImportOptions): Promise<void> => {
       if (domainArg) {
         const check = await checkDomainAvailable(domainArg);
         if (!check.is_valid) {
-          console.log(chalk.red(`Domain not available: ${check.error || 'unknown reason'}`));
+          console.log(
+            chalk.red(
+              `Domain not available: ${check.error || 'unknown reason'}`,
+            ),
+          );
           return;
         }
         console.log(chalk.green(`Domain available: ${domainArg}`));
@@ -168,24 +209,43 @@ export default async (options?: ImportOptions): Promise<void> => {
 
       console.log(chalk.blue(`importing ${absolutePath} to ipfs as CAR...`));
       try {
-        const result = await upload(absolutePath, true); // importAsCar = true
+        const result = await uploadPath(absolutePath, {
+          importAsCar: true,
+          uid: getUid(),
+        });
 
         if (result) {
           const uid = getUid();
-          const encryptedCID = encryptHash(result.contentHash, secretKey, uid);
+          const encryptedCID = encryptHash(
+            result.contentHash,
+            APP_CONFIG.secretKey,
+            uid,
+          );
           console.log(
             chalk.cyan(
               figlet.textSync('Successful', { horizontalLayout: 'full' }),
             ),
           );
-          console.log(chalk.cyan(`URL:`));
-          console.log(chalk.cyan(`${URL}${encryptedCID}`));
+          printHighlightedUrl(
+            'URL',
+            `${APP_CONFIG.ipfsPreviewUrl}${encryptedCID}`,
+            'primary',
+          );
           if (domainArg) {
-            console.log(chalk.blue(`Binding domain: ${domainArg} with CID: ${result.contentHash}`));
+            console.log(
+              chalk.blue(
+                `Binding domain: ${domainArg} with CID: ${result.contentHash}`,
+              ),
+            );
             const ok = await bindPinmeDomain(domainArg, result.contentHash);
             if (ok) {
               console.log(chalk.green(`Bind success: ${domainArg}`));
-              console.log(chalk.white(`Visit (Pinme subdomain example): https://${domainArg}.pinit.eth.limo`));
+              const rootDomain = await getRootDomain();
+              console.log(
+                chalk.white(
+                  `Visit (Pinme subdomain example): https://${domainArg}.${rootDomain}`,
+                ),
+              );
             } else {
               console.log(chalk.red('Binding failed. Please try again later.'));
             }
@@ -193,12 +253,11 @@ export default async (options?: ImportOptions): Promise<void> => {
           console.log(chalk.green('\n🎉 import successful, program exit'));
         }
       } catch (error: any) {
-        console.error(chalk.red(`Error: ${error.message}`));
+        printCliError(error, 'Import failed.');
       }
       process.exit(0);
     }
   } catch (error: any) {
-    console.error(chalk.red(`error executing: ${error.message}`));
-    console.error(error.stack);
+    printCliError(error, 'Import failed.');
   }
 };

@@ -8,10 +8,9 @@ import {
   createConfigError,
   printCliError,
 } from './utils/cliError';
+import { getPinmeApiUrl } from './utils/config';
 
 const PROJECT_DIR = process.cwd();
-const API_BASE = process.env.PINME_API_BASE || '';
-
 interface UpdateDbOptions {
   projectName?: string;
   name?: string;
@@ -63,7 +62,7 @@ async function updateDb(sqlFiles: string[], projectName: string) {
   console.log(chalk.gray(`Project: ${projectName}`));
   console.log(chalk.gray(`SQL files: ${sqlFiles.length}`));
 
-  const apiUrl = `${API_BASE}/update_db?project_name=${encodeURIComponent(projectName)}`;
+  const apiUrl = `${getPinmeApiUrl('/update_db')}?project_name=${encodeURIComponent(projectName)}`;
   const headers = getAuthHeaders();
   console.log(chalk.gray(`API URL: ${apiUrl}`));
 

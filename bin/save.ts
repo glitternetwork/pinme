@@ -4,6 +4,16 @@ import path from 'path';
 import axios from 'axios';
 import { execSync } from 'child_process';
 import { getAuthHeaders } from './utils/webLogin';
+import {
+  bindDnsDomainV4,
+  bindPinmeDomain,
+  getRootDomain,
+} from './utils/pinmeApi';
+import {
+  isDnsDomain,
+  normalizeDomain,
+  validateDnsDomain,
+} from './utils/domainValidator';
 import { installProjectDependencies } from './utils/installProjectDependencies';
 import {
   createApiError,
@@ -11,13 +21,15 @@ import {
   createConfigError,
   printCliError,
 } from './utils/cliError';
+import { APP_CONFIG, getPinmeApiUrl } from './utils/config';
+import { uploadPath } from './services/uploadService';
+import { printHighlightedUrl } from './utils/urlDisplay';
 
 const PROJECT_DIR = process.cwd();
-const API_BASE = process.env.PINME_API_BASE || '';
-
 interface SaveOptions {
   projectName?: string;
   name?: string;
+  domain?: string;
 }
 
 // ============ 工具函数 ============
@@ -37,6 +49,10 @@ function loadConfig() {
   return {
     project_name: projectNameMatch?.[1] || '',
   };
+}
+
+function getProjectManagementUrl(projectName: string): string {
+  return `${APP_CONFIG.projectPeviewUrl}${projectName}`;
 }
 // ============ 后端部署 ============
 
@@ -170,7 +186,7 @@ async function saveWorker(workerJsPath: string, modulePaths: string[], sqlFiles:
   console.log(chalk.gray(`modulePaths: ${modulePaths}`));
   console.log(chalk.gray(`sqlFiles: ${sqlFiles}`));
   console.log(chalk.gray(`metadata: ${metadata}`));
-  const apiUrl = `${API_BASE}/save_worker?project_name=${encodeURIComponent(projectName)}`;
+  const apiUrl = `${getPinmeApiUrl('/save_worker')}?project_name=${encodeURIComponent(projectName)}`;
   const headers = getAuthHeaders();
   console.log(chalk.gray(`API URL: ${apiUrl}`));
   try {
@@ -252,52 +268,82 @@ function buildFrontend() {
   }
 }
 
-function deployFrontend(projectName: string) {
+function updateFrontendUrlInConfig(configPath: string, frontendUrl: string): void {
+  let config = fs.readFileSync(configPath, 'utf-8');
+
+  if (config.includes('frontend_url')) {
+    config = config.replace(
+      /frontend_url\s*=\s*"[^"]*"/,
+      `frontend_url = "${frontendUrl}"`,
+    );
+  } else {
+    config = config.replace(
+      /(project_name\s*=\s*"[^"]*"\n)/,
+      `$1frontend_url = "${frontendUrl}"\n`,
+    );
+  }
+
+  fs.writeFileSync(configPath, config);
+}
+
+async function deployFrontend(projectName: string): Promise<{ contentHash: string; publicUrl: string }> {
   console.log(chalk.blue('Deploying frontend to IPFS...'));
   try {
-    const uploadOutput = execSync('pinme upload ./frontend/dist', {
-      cwd: PROJECT_DIR,
-      encoding: 'utf-8',
-      env: {
-        ...process.env,
-        PINME_PROJECT_NAME: projectName,
-      },
+    const headers = getAuthHeaders();
+    const uploadResult = await uploadPath(path.join(PROJECT_DIR, 'frontend', 'dist'), {
+      projectName,
+      uid: headers['token-address'],
     });
-    console.log(uploadOutput);
-    
-    // Extract URL from output (format: https://xxx.pinme.dev)
-    const urlMatch = uploadOutput.match(/https:\/\/[\w-]+\.pinme\.dev/);
-    if (urlMatch) {
-      const frontendUrl = urlMatch[0];
-      console.log(chalk.green(`Frontend deployed to IPFS: ${frontendUrl}`));
-      
-      // Update pinme.toml with frontend URL
-      const configPath = path.join(PROJECT_DIR, 'pinme.toml');
-      let config = fs.readFileSync(configPath, 'utf-8');
-      
-      // Add or update frontend_url
-      if (config.includes('frontend_url')) {
-        config = config.replace(
-          /frontend_url\s*=\s*"[^"]*"/,
-          `frontend_url = "${frontendUrl}"`
-        );
-      } else {
-        // Add frontend_url after project_name
-        config = config.replace(
-          /(project_name\s*=\s*"[^"]*"\n)/,
-          `$1frontend_url = "${frontendUrl}"\n`
-        );
-      }
-      fs.writeFileSync(configPath, config);
-      console.log(chalk.green('Updated pinme.toml with frontend URL'));
-    } else {
-      console.log(chalk.green('Frontend deployed to IPFS'));
-    }
+    updateFrontendUrlInConfig(path.join(PROJECT_DIR, 'pinme.toml'), uploadResult.publicUrl);
+    return {
+      contentHash: uploadResult.contentHash,
+      publicUrl: uploadResult.publicUrl,
+    };
   } catch (error: any) {
-    throw createCommandError('frontend deploy', 'pinme upload ./frontend/dist', error, [
-      'Make sure `frontend/dist` exists and `pinme upload` works in this environment.',
+    throw createCommandError('frontend deploy', 'upload frontend/dist', error, [
+      'Make sure `frontend/dist` exists and the upload API is reachable.',
     ]);
   }
+}
+
+async function bindFrontendDomain(
+  domain: string,
+  contentHash: string,
+  projectName: string,
+  headers: Record<string, string>,
+): Promise<string> {
+  const displayDomain = normalizeDomain(domain);
+  const isDns = isDnsDomain(displayDomain);
+
+  if (isDns) {
+    const validation = validateDnsDomain(displayDomain);
+    if (!validation.valid) {
+      throw createConfigError(validation.message || 'Invalid domain format.', [
+        'Use a complete domain like `example.com` for DNS binding.',
+      ]);
+    }
+  }
+
+  if (isDns) {
+    const dnsResult = await bindDnsDomainV4(
+      displayDomain,
+      contentHash,
+      headers['token-address'],
+      headers['authentication-tokens'],
+      projectName,
+    );
+    if (dnsResult.code !== 200) {
+      throw new Error(dnsResult.msg || 'DNS binding failed');
+    }
+    return `https://${displayDomain}`;
+  }
+
+  const ok = await bindPinmeDomain(displayDomain, contentHash, projectName);
+  if (!ok) {
+    throw new Error('Pinme subdomain binding failed');
+  }
+  const rootDomain = await getRootDomain();
+  return `https://${displayDomain}.${rootDomain}`;
 }
 
 // ============ 主函数 ============
@@ -338,7 +384,7 @@ export default async function saveCmd(options: SaveOptions): Promise<void> {
 
     console.log(chalk.gray(`Project: ${projectName}`));
 
-    const apiUrl = `${API_BASE}/save_worker?project_name=${encodeURIComponent(projectName)}`;
+    const apiUrl = `${getPinmeApiUrl('/save_worker')}?project_name=${encodeURIComponent(projectName)}`;
     console.log(chalk.gray(`API URL: ${apiUrl}`));
 
     // Backend: build + save
@@ -357,8 +403,25 @@ export default async function saveCmd(options: SaveOptions): Promise<void> {
     // Frontend: build + deploy
     console.log(chalk.blue('\n--- Frontend ---'));
     buildFrontend();
-    deployFrontend(projectName);
+    const frontendResult = await deployFrontend(projectName);
+    let finalFrontendUrl = frontendResult.publicUrl;
 
+    if (options.domain) {
+      finalFrontendUrl = await bindFrontendDomain(
+        options.domain,
+        frontendResult.contentHash,
+        projectName,
+        headers,
+      );
+    }
+
+    console.log(chalk.blue('\n--- Access ---'));
+    printHighlightedUrl('Frontend URL', finalFrontendUrl, 'primary');
+    printHighlightedUrl(
+      'Project Management URL',
+      getProjectManagementUrl(projectName),
+      'management',
+    );
     console.log(chalk.green('\nDeployment complete.'));
     process.exit(0);
   } catch (error: any) {

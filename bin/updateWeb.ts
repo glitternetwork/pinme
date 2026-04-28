@@ -8,6 +8,9 @@ import {
   createConfigError,
   printCliError,
 } from './utils/cliError';
+import { APP_CONFIG } from './utils/config';
+import { uploadPath } from './services/uploadService';
+import { printHighlightedUrl } from './utils/urlDisplay';
 
 const PROJECT_DIR = process.cwd();
 
@@ -34,6 +37,10 @@ function loadConfig() {
   };
 }
 
+function getProjectManagementUrl(projectName: string): string {
+  return `${APP_CONFIG.projectPeviewUrl}${projectName}`;
+}
+
 // ============ 前端构建和部署 ============
 
 function buildFrontend() {
@@ -51,21 +58,23 @@ function buildFrontend() {
   }
 }
 
-function deployFrontend(projectName: string) {
+async function deployFrontend(projectName: string): Promise<void> {
   console.log(chalk.blue('Deploying frontend to IPFS...'));
   try {
-    execSync('pinme upload ./frontend/dist', {
-      cwd: PROJECT_DIR,
-      stdio: 'inherit',
-      env: {
-        ...process.env,
-        PINME_PROJECT_NAME: projectName,
-      },
+    const headers = getAuthHeaders();
+    const uploadResult = await uploadPath(path.join(PROJECT_DIR, 'frontend', 'dist'), {
+      projectName,
+      uid: headers['token-address'],
     });
-    console.log(chalk.green('Frontend deployed to IPFS'));
+    printHighlightedUrl('Frontend URL', uploadResult.publicUrl, 'primary');
+    printHighlightedUrl(
+      'Project Management URL',
+      getProjectManagementUrl(projectName),
+      'management',
+    );
   } catch (error: any) {
-    throw createCommandError('frontend deploy', 'pinme upload ./frontend/dist', error, [
-      'Make sure `frontend/dist` exists and `pinme upload` can run successfully.',
+    throw createCommandError('frontend deploy', 'upload frontend/dist', error, [
+      'Make sure `frontend/dist` exists and the upload API is reachable.',
     ]);
   }
 }
@@ -111,7 +120,7 @@ export default async function updateWebCmd(options?: UpdateWebOptions): Promise<
     // Frontend: build + deploy
     console.log(chalk.blue('\n--- Frontend Update ---'));
     buildFrontend();
-    deployFrontend(projectName);
+    await deployFrontend(projectName);
 
     console.log(chalk.green('\nWeb update complete.'));
     process.exit(0);

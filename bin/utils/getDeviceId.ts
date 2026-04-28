@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
 import { v4 as uuidv4 } from 'uuid';
-import { getAuthConfig } from './auth';
+import { getAuthConfig } from './webLogin';
 
 export function getDeviceId(): string {
   const configDir = path.join(os.homedir(), '.pinme');

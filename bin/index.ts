@@ -19,6 +19,7 @@ import setAppKeyCmd from './set-appkey';
 import logoutCmd from './logout';
 import showAppKeyCmd from './show-appkey';
 import myDomainsCmd from './my-domains';
+import walletBalanceCmd from './wallet-balance';
 import bindCmd from './bind';
 import loginCmd, { EnvOption } from './login';
 import createCmd from './create';
@@ -30,6 +31,7 @@ import deleteCmd from './delete';
 
 interface SaveOptions {
   name?: string;
+  domain?: string;
 }
 
 // display the ASCII art logo
@@ -104,8 +106,15 @@ program
   .action(() => myDomainsCmd());
 
 program
+  .command('wallet')
+  .alias('wallet-balance')
+  .alias('balance')
+  .description('Show current wallet balance')
+  .action(() => walletBalanceCmd());
+
+program
   .command('bind')
-  .description('Upload and bind to a domain (requires VIP)')
+  .description('Upload and bind to a domain (requires wallet balance)')
   .option('-d, --domain <name>', 'Domain name to bind')
   .option('--dns', 'Force DNS domain mode')
   .action(() => bindCmd());
@@ -120,7 +129,8 @@ program
 program
   .command('save')
   .description('Deploy the project (frontend + backend)')
-  .action((options: { name?: string }) => saveCmd(options));
+  .option('-d, --domain <name>', 'Bind a domain after frontend deploy')
+  .action((options: SaveOptions) => saveCmd(options));
 
 program
   .command('update-db')
@@ -158,11 +168,11 @@ program
     parseInt,
   )
   .option('-c, --clear', 'clear all upload history')
-  .action((options: { limit?: number; clear?: boolean }) => {
+  .action(async (options: { limit?: number; clear?: boolean }) => {
     if (options.clear) {
       clearUploadHistory();
     } else {
-      displayUploadHistory(options.limit || 10);
+      await displayUploadHistory(options.limit || 10);
     }
   });
 
@@ -176,11 +186,11 @@ program
     parseInt,
   )
   .option('-c, --clear', 'clear all upload history')
-  .action((options: { limit?: number; clear?: boolean }) => {
+  .action(async (options: { limit?: number; clear?: boolean }) => {
     if (options.clear) {
       clearUploadHistory();
     } else {
-      displayUploadHistory(options.limit || 10);
+      await displayUploadHistory(options.limit || 10);
     }
   });
 

@@ -1,9 +1,7 @@
-import axios, { AxiosInstance } from 'axios';
 import chalk from 'chalk';
-import { getAuthHeaders } from './webLogin';
-
-const DEFAULT_BASE =
-  process.env.PINME_API_BASE || 'http://ipfs-proxy.opena.chat/api/v4';
+import { createCarApiClient, createPinmeApiClient } from './apiClient';
+import { APP_CONFIG } from './config';
+import { isDnsDomain } from './domainValidator';
 
 // Token expired error codes
 const TOKEN_EXPIRED_CODES = [
@@ -53,26 +51,11 @@ function showTokenExpiredHint(): void {
   console.log(chalk.yellow('Please re-run: pinme set-appkey <AppKey>\n'));
 }
 
-function createClient(): AxiosInstance {
-  const headers = getAuthHeaders();
-  return axios.create({
-    baseURL: DEFAULT_BASE,
-    timeout: 20000,
-    headers: {
-      ...headers,
-      Accept: '*/*',
-      'Content-Type': 'application/json',
-      'User-Agent': 'Pinme-CLI',
-      Connection: 'keep-alive',
-    },
-  });
-}
-
 export async function bindAnonymousDevice(
   anonymousUid: string,
 ): Promise<boolean> {
   try {
-    const client = createClient();
+    const client = createPinmeApiClient();
     const { data } = await client.post('/bind_anonymous', {
       anonymous_uid: anonymousUid,
     });
@@ -94,13 +77,47 @@ export interface CheckDomainResult {
   error?: string;
 }
 
+export interface GetRootDomainResponse {
+  code: number;
+  msg: string;
+  data: {
+    domain: string;
+  };
+}
+
+let rootDomainCache: string | null = null;
+
+export async function getRootDomain(
+  forceRefresh: boolean = false,
+): Promise<string> {
+  if (!forceRefresh && rootDomainCache) {
+    return rootDomainCache;
+  }
+
+  const client = createPinmeApiClient();
+  const { data } = await client.get<GetRootDomainResponse>('/root_domain');
+
+  if (data?.code === 200 && data?.data?.domain) {
+    rootDomainCache = data.data.domain;
+    return rootDomainCache;
+  }
+
+  throw new Error(data?.msg || 'Failed to get root domain');
+}
+
 export async function checkDomainAvailable(
   domainName: string,
 ): Promise<CheckDomainResult> {
-  const client = createClient();
+  if (isDnsDomain(domainName)) {
+    return await {
+      is_valid: true,
+    };
+  }
+  const client = createPinmeApiClient();
   // Endpoint may not be fixed, prioritize environment variable, then try two common paths
-  const configured = process.env.PINME_CHECK_DOMAIN_PATH || '/check_domain';
-  const fallbacks = [configured, '/check_domain_available'];
+  const configured = APP_CONFIG.pinmeCheckDomainPath;
+  const fallbacks = [configured];
+  let lastRecoverableError: any;
 
   for (const p of fallbacks) {
     try {
@@ -117,22 +134,35 @@ export async function checkDomainAvailable(
         showTokenExpiredHint();
         throw new Error('Token expired');
       }
-      // 404/405/500 etc., continue trying next path
+
+      const status = e?.response?.status;
+      if (status && ![404, 405].includes(status)) {
+        throw e;
+      }
+
+      lastRecoverableError = e;
     }
   }
-  // If all attempts fail, return unknown state, let subsequent bind return error message
+
+  if (lastRecoverableError) {
+    throw lastRecoverableError;
+  }
+
+  // If all attempts fail silently, return unknown state and let the bind step decide.
   return { is_valid: true };
 }
 
 export async function bindPinmeDomain(
   domainName: string,
   hash: string,
+  projectName?: string,
 ): Promise<boolean> {
   try {
-    const client = createClient();
+    const client = createPinmeApiClient();
     const { data } = await client.post('/bind_pinme_domain', {
       domain_name: domainName,
       hash,
+      ...(projectName ? { project_name: projectName } : {}),
     });
     return data?.code === 200;
   } catch (e: any) {
@@ -153,7 +183,7 @@ export interface MyDomainItem {
 
 export async function getMyDomains(): Promise<MyDomainItem[]> {
   try {
-    const client = createClient();
+    const client = createPinmeApiClient();
     const { data } = await client.get('/my_domains');
     if (data?.code === 200) {
       if (Array.isArray(data?.data)) {
@@ -194,14 +224,16 @@ export async function bindDnsDomainV4(
   hash: string,
   tokenAddress: string,
   authToken: string,
+  projectName?: string,
 ): Promise<BindDnsDomainV4Response> {
   try {
-    const client = createClient();
+    const client = createPinmeApiClient();
     const { data } = await client.post<BindDnsDomainV4Response>(
       '/bind_dns',
       {
         domain_name: domainName,
         hash: hash,
+        ...(projectName ? { project_name: projectName } : {}),
       },
       {
         headers: {
@@ -211,6 +243,39 @@ export async function bindDnsDomainV4(
       },
     );
     return data as BindDnsDomainV4Response;
+  } catch (e: any) {
+    if (isTokenExpired(e)) {
+      showTokenExpiredHint();
+      throw new Error('Token expired');
+    }
+    throw e;
+  }
+}
+
+export interface WalletBalanceResponse {
+  code: number;
+  msg: string;
+  data?: {
+    wallet_balance_usd?: number;
+  };
+}
+
+export async function getWalletBalance(
+  tokenAddress: string,
+  authToken: string,
+): Promise<WalletBalanceResponse> {
+  try {
+    const client = createPinmeApiClient();
+    const { data } = await client.get<WalletBalanceResponse>(
+      '/pay/wallet/balance',
+      {
+        headers: {
+          'authentication-tokens': authToken,
+          'token-address': tokenAddress,
+        },
+      },
+    );
+    return data as WalletBalanceResponse;
   } catch (e: any) {
     if (isTokenExpired(e)) {
       showTokenExpiredHint();
@@ -234,7 +299,7 @@ export async function isVip(
   authToken: string,
 ): Promise<IsVipResponse> {
   try {
-    const client = createClient();
+    const client = createPinmeApiClient();
     const { data } = await client.get<IsVipResponse>('/is_vip', {
       headers: {
         'x-auth-token': authToken,
@@ -249,32 +314,6 @@ export async function isVip(
     }
     throw e;
   }
-}
-
-// CAR Export API
-const CAR_API_BASE =
-  process.env.CAR_API_BASE ||
-  process.env.IPFS_API_URL ||
-  'http://ipfs-proxy.opena.chat/api/v3';
-
-function createCarClient(): AxiosInstance {
-  let headers = {};
-  try {
-    headers = getAuthHeaders();
-  } catch (e) {
-    // Auth not required for some endpoints, continue without auth headers
-  }
-  return axios.create({
-    baseURL: CAR_API_BASE,
-    timeout: 20000,
-    headers: {
-      ...headers,
-      Accept: '*/*',
-      'Content-Type': 'application/json',
-      'User-Agent': 'Pinme-CLI',
-      Connection: 'keep-alive',
-    },
-  });
 }
 
 export interface CarExportResponse {
@@ -303,7 +342,7 @@ export async function requestCarExport(
   uid: string,
 ): Promise<CarExportResponse['data']> {
   try {
-    const client = createCarClient();
+    const client = createCarApiClient();
     // Use POST method as shown in the example
     const { data } = await client.post<CarExportResponse>('/car/export', null, {
       params: {
@@ -340,7 +379,7 @@ export async function checkCarExportStatus(
   taskId: string,
 ): Promise<CarExportStatusResponse['data']> {
   try {
-    const client = createCarClient();
+    const client = createCarApiClient();
     const { data } = await client.get<CarExportStatusResponse>(
       '/car/export/status',
       {

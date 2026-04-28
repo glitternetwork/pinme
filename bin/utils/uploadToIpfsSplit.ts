@@ -9,19 +9,19 @@ import {
   checkDirectorySizeLimit,
   formatSize,
 } from './uploadLimits';
+import { createApiError } from './cliError';
 import { saveUploadHistory } from './history';
 import { getUid } from './getDeviceId';
 import { getAuthHeaders } from './webLogin';
+import { APP_CONFIG } from './config';
 
 // Configuration constants
-const IPFS_API_URL =
-  process.env.IPFS_API_URL || 'https://ipfs.glitterprotocol.dev/api/v2';
-const MAX_RETRIES = parseInt(process.env.MAX_RETRIES || '2');
-const RETRY_DELAY = parseInt(process.env.RETRY_DELAY_MS || '1000');
-const TIMEOUT = parseInt(process.env.TIMEOUT_MS || '600000');
-const MAX_POLL_TIME =
-  parseInt(process.env.MAX_POLL_TIME_MINUTES || '5') * 60 * 1000;
-const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_SECONDS || '2') * 1000;
+const IPFS_API_URL = APP_CONFIG.ipfsApiUrl;
+const MAX_RETRIES = APP_CONFIG.upload.maxRetries;
+const RETRY_DELAY = APP_CONFIG.upload.retryDelayMs;
+const TIMEOUT = APP_CONFIG.upload.timeoutMs;
+const MAX_POLL_TIME = APP_CONFIG.upload.maxPollTimeMs;
+const POLL_INTERVAL = APP_CONFIG.upload.pollIntervalMs;
 const PROGRESS_UPDATE_INTERVAL = 200; // ms
 const EXPECTED_UPLOAD_TIME = 60000; // 60 seconds
 const MAX_PROGRESS = 0.9; // 90%
@@ -65,6 +65,8 @@ interface ChunkStatusResponse {
       Size: number;
       Hash?: string;
       ShortUrl?: string;
+      pinme_domain?: string;
+      dns_domain?: string;
     };
     domain?: string;
   };
@@ -73,6 +75,101 @@ interface ChunkStatusResponse {
 interface UploadResult {
   hash: string;
   shortUrl?: string;
+  pinmeUrl?: string;
+  dnsUrl?: string;
+}
+
+interface UploadExecutionOptions {
+  importAsCar?: boolean;
+  projectName?: string;
+  uid?: string;
+}
+
+function getUploadAuthHeaders(): Record<string, string> {
+  return getAuthHeaders();
+}
+
+function extractAxiosErrorMessage(error: any): string {
+  const responseData = error?.response?.data;
+
+  if (typeof responseData === 'string' && responseData.trim()) {
+    return responseData.trim();
+  }
+
+  const message =
+    responseData?.msg ||
+    responseData?.message ||
+    responseData?.error ||
+    responseData?.data?.msg ||
+    responseData?.data?.message ||
+    responseData?.data?.error;
+
+  if (typeof message === 'string' && message.trim()) {
+    return message.trim();
+  }
+
+  return error?.message || 'Unknown network error';
+}
+
+function formatAxiosError(prefix: string, error: any): Error {
+  return createApiError(
+    prefix,
+    error,
+    [],
+  );
+}
+
+function createUploadBusinessError(
+  stage: string,
+  endpoint: string,
+  method: 'GET' | 'POST',
+  status: number | undefined,
+  data: unknown,
+): Error {
+  return createApiError(
+    stage,
+    {
+      response: {
+        status,
+        data,
+      },
+      config: {
+        url: endpoint,
+        method,
+      },
+    },
+    [`Endpoint: ${endpoint}`],
+  );
+}
+
+function logAxiosErrorDetails(prefix: string, error: any): void {
+  const status = error?.response?.status;
+  const responseData = error?.response?.data;
+
+  console.error(`[pinme upload] ${prefix}`);
+  console.error(`[pinme upload] status: ${status ?? 'unknown'}`);
+
+  if (responseData === undefined) {
+    console.error('[pinme upload] response: <empty>');
+    return;
+  }
+
+  try {
+    console.error(`[pinme upload] response: ${JSON.stringify(responseData)}`);
+  } catch {
+    console.error(`[pinme upload] response: ${String(responseData)}`);
+  }
+}
+
+function isStorageLimitError(error: any): boolean {
+  const message = extractAxiosErrorMessage(error).toLowerCase();
+  return (
+    message.includes('storage space limit') ||
+    message.includes('space limit reached') ||
+    message.includes('storage limit reached') ||
+    message.includes('quota exceeded') ||
+    message.includes('insufficient storage')
+  );
 }
 
 // Enhanced progress bar with better UX
@@ -155,8 +252,9 @@ class StepProgressBar {
 
       const duration = this.formatDuration(Math.floor(elapsed / 1000));
       const progressBar = this.createProgressBar(progress);
-      this.spinner.text = `Uploading ${this.fileName
-        }... ${progressBar} ${Math.round(progress * 100)}% (${duration})`;
+      this.spinner.text = `Uploading ${
+        this.fileName
+      }... ${progressBar} ${Math.round(progress * 100)}% (${duration})`;
     }, PROGRESS_UPDATE_INTERVAL);
   }
 
@@ -251,6 +349,7 @@ async function compressDirectory(sourcePath: string): Promise<string> {
 async function initChunkSession(
   filePath: string,
   deviceId: string,
+  options: UploadExecutionOptions = {},
   isDirectory: boolean = false,
 ): Promise<ChunkSessionResponse['data']> {
   const stats = fs.statSync(filePath);
@@ -259,18 +358,29 @@ async function initChunkSession(
   const md5 = await calculateMD5(filePath);
 
   try {
+    const projectName = options.projectName?.trim();
+    const authHeaders = getUploadAuthHeaders();
+    const requestBody: any = {
+      file_name: fileName,
+      file_size: fileSize,
+      md5: md5,
+      is_directory: isDirectory,
+      uid: deviceId,
+    };
+
+    if (projectName) {
+      requestBody.project_name = projectName;
+    }
+
     const response = await axios.post<ChunkSessionResponse>(
       `${IPFS_API_URL}/chunk/init`,
-      {
-        file_name: fileName,
-        file_size: fileSize,
-        md5: md5,
-        is_directory: isDirectory,
-        uid: deviceId,
-      },
+      requestBody,
       {
         timeout: TIMEOUT,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
       },
     );
 
@@ -278,10 +388,17 @@ async function initChunkSession(
     if (code === 200 && data) {
       return data;
     }
-    throw new Error(`Session initialization failed: ${msg} (code: ${code})`);
+    throw createUploadBusinessError(
+      'Session initialization failed',
+      `${IPFS_API_URL}/chunk/init`,
+      'POST',
+      response.status,
+      response.data,
+    );
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(`Network error: ${error.message}`);
+      logAxiosErrorDetails('chunk/init failed', error);
+      throw formatAxiosError('Session initialization failed', error);
     }
     throw error;
   }
@@ -313,7 +430,10 @@ async function uploadChunkWithAbort(
       `${IPFS_API_URL}/chunk/upload`,
       form,
       {
-        headers: { ...form.getHeaders() },
+        headers: {
+          ...form.getHeaders(),
+          ...getUploadAuthHeaders(),
+        },
         timeout: TIMEOUT,
         signal,
       },
@@ -323,10 +443,21 @@ async function uploadChunkWithAbort(
     if (code === 200 && data) {
       return data;
     }
-    throw new Error(`Chunk upload failed: ${msg} (code: ${code})`);
+    throw createUploadBusinessError(
+      'Chunk upload failed',
+      `${IPFS_API_URL}/chunk/upload`,
+      'POST',
+      response.status,
+      response.data,
+    );
   } catch (error: any) {
     if (error.name === 'CanceledError' || signal.aborted) {
       throw new Error('Request cancelled');
+    }
+
+    if (axios.isAxiosError(error) && isStorageLimitError(error)) {
+      logAxiosErrorDetails('chunk/upload failed', error);
+      throw formatAxiosError('Chunk upload failed', error);
     }
 
     if (retryCount < MAX_RETRIES) {
@@ -341,8 +472,14 @@ async function uploadChunkWithAbort(
       );
     }
 
+    if (axios.isAxiosError(error)) {
+      logAxiosErrorDetails('chunk/upload failed', error);
+      throw formatAxiosError('Chunk upload failed', error);
+    }
+
     throw new Error(
-      `Chunk ${chunkIndex + 1} upload failed after ${MAX_RETRIES} retries: ${error.message
+      `Chunk ${chunkIndex + 1} upload failed after ${MAX_RETRIES} retries: ${
+        error.message
       }`,
     );
   }
@@ -418,8 +555,9 @@ async function uploadFileChunks(
         }
 
         hasFatalError = true;
-        fatalError = `Chunk ${chunkIndex + 1}/${totalChunks} upload failed: ${error.message
-          }`;
+        fatalError = `Chunk ${chunkIndex + 1}/${totalChunks} upload failed: ${
+          error.message
+        }`;
         abortController.abort();
         throw new Error(fatalError);
       }
@@ -450,18 +588,17 @@ async function uploadFileChunks(
 async function completeChunkUpload(
   sessionId: string,
   deviceId: string,
-  importAsCar: boolean = false,
+  options: UploadExecutionOptions = {},
 ): Promise<string> {
   try {
     const requestBody: any = { session_id: sessionId, uid: deviceId };
-    const projectName = process.env.PINME_PROJECT_NAME?.trim();
-    let authHeaders: Record<string, string> = {};
-    if (importAsCar) {
+    const projectName = options.projectName?.trim();
+    const authHeaders = getUploadAuthHeaders();
+    if (options.importAsCar) {
       requestBody.import_as_car = true;
     }
     if (projectName) {
       requestBody.project_name = projectName;
-      authHeaders = getAuthHeaders();
     }
     const response = await axios.post<ChunkCompleteResponse>(
       `${IPFS_API_URL}/chunk/complete`,
@@ -479,10 +616,17 @@ async function completeChunkUpload(
     if (code === 200 && data) {
       return data.trace_id;
     }
-    throw new Error(`Complete upload failed: ${msg} (code: ${code})`);
+    throw createUploadBusinessError(
+      'Complete upload failed',
+      `${IPFS_API_URL}/chunk/complete`,
+      'POST',
+      response.status,
+      response.data,
+    );
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(`Network error: ${error.message}`);
+      logAxiosErrorDetails('chunk/complete failed', error);
+      throw formatAxiosError('Complete upload failed', error);
     }
     throw error;
   }
@@ -491,9 +635,11 @@ async function completeChunkUpload(
 async function getChunkStatus(
   sessionId: string,
   deviceId: string,
+  options: UploadExecutionOptions = {},
 ): Promise<ChunkStatusResponse['data']> {
   try {
-    const projectName = process.env.PINME_PROJECT_NAME?.trim();
+    const projectName = options.projectName?.trim();
+    const authHeaders = getUploadAuthHeaders();
     const queryParams = new URLSearchParams({
       trace_id: sessionId,
       uid: deviceId,
@@ -506,7 +652,10 @@ async function getChunkStatus(
       `${IPFS_API_URL}/up_status?${queryParams.toString()}`,
       {
         timeout: TIMEOUT,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
       },
     );
 
@@ -514,10 +663,17 @@ async function getChunkStatus(
     if (code === 200) {
       return data;
     }
-    throw new Error(`Server returned error: ${msg} (code: ${code})`);
+    throw createUploadBusinessError(
+      'Upload status check failed',
+      `${IPFS_API_URL}/up_status`,
+      'GET',
+      response.status,
+      response.data,
+    );
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      throw new Error(`Network error: ${error.message}`);
+      logAxiosErrorDetails('up_status failed', error);
+      throw formatAxiosError('Upload status check failed', error);
     }
     throw error;
   }
@@ -526,6 +682,7 @@ async function getChunkStatus(
 async function monitorChunkProgress(
   traceId: string,
   deviceId: string,
+  options: UploadExecutionOptions = {},
   progressBar?: StepProgressBar,
 ): Promise<UploadResult | null> {
   let consecutiveErrors = 0;
@@ -539,7 +696,7 @@ async function monitorChunkProgress(
   try {
     while (Date.now() - startTime < MAX_POLL_TIME) {
       try {
-        const status = await getChunkStatus(traceId, deviceId);
+        const status = await getChunkStatus(traceId, deviceId, options);
         consecutiveErrors = 0;
 
         if (status.is_ready && status.upload_rst.Hash) {
@@ -547,13 +704,14 @@ async function monitorChunkProgress(
           if (progressBar) {
             progressBar.stopSimulatingProgress();
           }
-          // Use domain from backend to construct full URL
           const shortUrl = status.upload_rst.ShortUrl;
-          const domain = status.domain;
-          const fullShortUrl = shortUrl && domain ? `${shortUrl}.${domain}` : shortUrl;
+          const pinmeDomain = status.upload_rst.pinme_domain;
+          const dnsDomain = status.upload_rst.dns_domain;
           return {
             hash: status.upload_rst.Hash,
-            shortUrl: fullShortUrl,
+            shortUrl,
+            pinmeUrl: pinmeDomain,
+            dnsUrl: dnsDomain,
           };
         }
       } catch (error: any) {
@@ -580,7 +738,7 @@ async function monitorChunkProgress(
 async function uploadDirectoryInChunks(
   directoryPath: string,
   deviceId: string,
-  importAsCar: boolean = false,
+  options: UploadExecutionOptions = {},
 ): Promise<UploadResult | null> {
   const sizeCheck = checkDirectorySizeLimit(directoryPath);
   if (sizeCheck.exceeds) {
@@ -599,7 +757,12 @@ async function uploadDirectoryInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(1, 'Initializing session');
-    const sessionInfo = await initChunkSession(compressedPath, deviceId, true);
+    const sessionInfo = await initChunkSession(
+      compressedPath,
+      deviceId,
+      options,
+      true,
+    );
     progressBar.completeStep();
 
     progressBar.startStep(2, 'Chunk upload');
@@ -614,11 +777,20 @@ async function uploadDirectoryInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(3, 'Completing upload');
-    const traceId = await completeChunkUpload(sessionInfo.session_id, deviceId, importAsCar);
+    const traceId = await completeChunkUpload(
+      sessionInfo.session_id,
+      deviceId,
+      options,
+    );
     progressBar.completeStep();
 
     progressBar.startStep(4, 'Waiting for processing');
-    const result = await monitorChunkProgress(traceId, deviceId, progressBar);
+    const result = await monitorChunkProgress(
+      traceId,
+      deviceId,
+      options,
+      progressBar,
+    );
     progressBar.completeStep();
 
     // Cleanup
@@ -637,6 +809,8 @@ async function uploadDirectoryInChunks(
       fileCount: 0,
       isDirectory: true,
       shortUrl: result?.shortUrl || null,
+      pinmeUrl: result?.pinmeUrl || null,
+      dnsUrl: result?.dnsUrl || null,
     };
     saveUploadHistory(uploadData);
 
@@ -655,7 +829,7 @@ async function uploadDirectoryInChunks(
 async function uploadFileInChunks(
   filePath: string,
   deviceId: string,
-  importAsCar: boolean = false,
+  options: UploadExecutionOptions = {},
 ): Promise<UploadResult | null> {
   const sizeCheck = checkFileSizeLimit(filePath);
   if (sizeCheck.exceeds) {
@@ -671,7 +845,12 @@ async function uploadFileInChunks(
 
   try {
     progressBar.startStep(0, 'Initializing session');
-    const sessionInfo = await initChunkSession(filePath, deviceId, false);
+    const sessionInfo = await initChunkSession(
+      filePath,
+      deviceId,
+      options,
+      false,
+    );
     progressBar.completeStep();
 
     progressBar.startStep(1, 'Chunk upload');
@@ -686,11 +865,20 @@ async function uploadFileInChunks(
     progressBar.completeStep();
 
     progressBar.startStep(2, 'Completing upload');
-    const traceId = await completeChunkUpload(sessionInfo.session_id, deviceId, importAsCar);
+    const traceId = await completeChunkUpload(
+      sessionInfo.session_id,
+      deviceId,
+      options,
+    );
     progressBar.completeStep();
 
     progressBar.startStep(3, 'Waiting for processing');
-    const result = await monitorChunkProgress(traceId, deviceId, progressBar);
+    const result = await monitorChunkProgress(
+      traceId,
+      deviceId,
+      options,
+      progressBar,
+    );
     progressBar.completeStep();
 
     // Save history
@@ -703,6 +891,8 @@ async function uploadFileInChunks(
       fileCount: 1,
       isDirectory: false,
       shortUrl: result?.shortUrl || null,
+      pinmeUrl: result?.pinmeUrl || null,
+      dnsUrl: result?.dnsUrl || null,
     };
     saveUploadHistory(uploadData);
 
@@ -719,27 +909,34 @@ async function uploadFileInChunks(
 }
 
 // Main export function
-export default async function (filePath: string, importAsCar: boolean = false): Promise<{
+export default async function (
+  filePath: string,
+  options: UploadExecutionOptions = {},
+): Promise<{
   contentHash: string;
   previewHash?: string | null;
   shortUrl?: string;
+  pinmeUrl?: string;
+  dnsUrl?: string;
 } | null> {
-  const deviceId = getUid();
-  if (!deviceId) {
-    throw new Error('Device ID not found');
+  const uid = options.uid?.trim() || getUid();
+  if (!uid) {
+    throw new Error('Upload uid not found');
   }
 
   try {
     const isDirectory = fs.statSync(filePath).isDirectory();
     const result = isDirectory
-      ? await uploadDirectoryInChunks(filePath, deviceId, importAsCar)
-      : await uploadFileInChunks(filePath, deviceId, importAsCar);
+      ? await uploadDirectoryInChunks(filePath, uid, options)
+      : await uploadFileInChunks(filePath, uid, options);
 
     if (result?.hash) {
       return {
         contentHash: result.hash,
         previewHash: null,
         shortUrl: result.shortUrl,
+        pinmeUrl: result.pinmeUrl,
+        dnsUrl: result.dnsUrl,
       };
     }
     throw new Error('Upload failed: no hash returned');

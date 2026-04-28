@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { getAuthConfig, WebLoginManager } from './utils/webLogin';
+import { WebLoginManager } from './utils/webLogin';
 import { getDeviceId } from './utils/getDeviceId';
 import { bindAnonymousDevice } from './utils/pinmeApi';
 
@@ -9,7 +9,7 @@ export interface EnvOption {
 
 const ENV_URLS: Record<string, string> = {
   dev: 'http://localhost:5173',
-  test: "http://test-pinme.pinit.eth.limo",
+  test: 'http://test-pinme.pinit.eth.limo',
   prod: 'https://pinme.eth.limo',
 };
 
@@ -23,7 +23,11 @@ export default async function loginCmd(options: EnvOption = {}): Promise<void> {
       webBaseUrl = ENV_URLS[env];
       console.log(chalk.blue(`Using ${env} environment: ${webBaseUrl}`));
     } else {
-      console.log(chalk.yellow(`Unknown environment: ${options.env}. Using default prod.`));
+      console.log(
+        chalk.yellow(
+          `Unknown environment: ${options.env}. Using default prod.`,
+        ),
+      );
       webBaseUrl = ENV_URLS.prod;
       console.log(chalk.blue(`Using prod environment: ${webBaseUrl}`));
     }

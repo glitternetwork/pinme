@@ -24,16 +24,18 @@ digraph pinme_decision {
 
 ## Path 1: Upload Files / Static Sites
 
-> No login required.
+> Login required. Use `pinme login` or `pinme set-appkey <AppKey>` before `pinme upload` or `pinme import`.
 
 ```dot
 digraph upload_flow {
     "Install/update pinme to latest" [shape=box];
+    "Authenticate" [shape=box];
     "Determine build artifacts" [shape=box];
     "pinme upload <path>" [shape=box];
     "Return preview URL" [shape=doublecircle];
 
-    "Install/update pinme to latest" -> "Determine build artifacts";
+    "Install/update pinme to latest" -> "Authenticate";
+    "Authenticate" -> "Determine build artifacts";
     "Determine build artifacts" -> "pinme upload <path>";
     "pinme upload <path>" -> "Return preview URL";
 }
@@ -46,19 +48,25 @@ LATEST=$(npm view pinme version)
 [ "$LOCAL" != "$LATEST" ] && npm install -g pinme@latest || echo "pinme is up to date ($LOCAL)"
 ```
 
-**2. Determine upload target** (priority order):
+**2. Authenticate:**
+```bash
+pinme login
+# or: pinme set-appkey <AppKey>
+```
+
+**3. Determine upload target** (priority order):
 1. `dist/` — Vite / Vue / React
 2. `build/` — Create React App
 3. `out/` — Next.js static export
 4. `public/` — Plain static files
 
-**3. Upload:**
+**4. Upload:**
 ```bash
 pinme upload <path>
-pinme upload ./dist --domain my-site  # Optional: bind subdomain (VIP required)
+pinme upload ./dist --domain my-site  # Optional: bind subdomain (wallet balance required)
 ```
 
-**4. Return** the preview URL (`https://pinme.eth.limo/#/preview/*`) to the user. Note: return the **full URL** including all hash characters — do not truncate.
+**5. Return** the final URL printed by PinMe to the user. URL priority is: DNS domain > PinMe subdomain > short URL > preview URL. If it falls back to preview, return the **full URL** including all hash characters — do not truncate.
 
 ### Common Examples
 
@@ -68,7 +76,7 @@ pinme upload ./my-folder             # Folder
 pinme upload dist                    # Vite/Vue build artifacts
 pinme upload build                   # CRA build artifacts
 pinme upload out                     # Next.js static export
-pinme upload ./dist --domain my-site # Bind PinMe subdomain (VIP required)
+pinme upload ./dist --domain my-site # Bind PinMe subdomain (wallet balance required)
 pinme import ./my-archive.car        # Import CAR file
 ```
 
@@ -81,6 +89,7 @@ pinme import ./my-archive.car        # Import CAR file
 ## Path 2: Full-Stack Project
 
 > Login required. Uses React+Vite frontend + Cloudflare Worker backend + D1 SQLite database.
+> When designing frontend projects, use Ant Design as the primary design reference, and prioritize following its conventions for layout, components, spacing, and interaction patterns.
 
 ```dot
 digraph fullstack_flow {
@@ -142,7 +151,8 @@ pinme update-db              # Run SQL migrations only (when only db/ was modifi
 │       ├── main.tsx
 │       ├── App.tsx
 │       ├── utils/
-│       │   └── api.ts      # export const API = import.meta.env.VITE_API_URL || ''
+│       │   ├── api.ts      # export const API = import.meta.env.VITE_WORKER_URL || ''
+│       │   └── config.ts   # Auto-generated: public_client_config (only when auth is enabled)
 │       └── pages/
 │           └── Home/
 │               └── index.tsx

@@ -2,85 +2,26 @@ import path from 'path';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import figlet from 'figlet';
-import upload from './utils/uploadToIpfsSplit';
 import fs from 'fs';
-import CryptoJS from 'crypto-js';
-import { checkDomainAvailable, bindPinmeDomain, bindDnsDomainV4, isVip } from './utils/pinmeApi';
-import { getUid } from './utils/getDeviceId';
+import {
+  checkDomainAvailable,
+  bindPinmeDomain,
+  bindDnsDomainV4,
+  getWalletBalance,
+} from './utils/pinmeApi';
 import { getAuthConfig } from './utils/webLogin';
-
-// get from environment variables
-const URL = process.env.IPFS_PREVIEW_URL;
-const secretKey = process.env.SECRET_KEY;
+import { APP_CONFIG, getWalletRechargeUrl } from './utils/config';
+import {
+  isDnsDomain,
+  normalizeDomain,
+  validateDnsDomain,
+} from './utils/domainValidator';
+import { printCliError, printRechargeUrl } from './utils/cliError';
+import { resolveUploadUrls, uploadPath } from './services/uploadService';
+import { printHighlightedUrl } from './utils/urlDisplay';
 
 import { checkNodeVersion } from './utils/checkNodeVersion';
 checkNodeVersion();
-
-// Check if a domain is a DNS domain (contains a dot)
-function isDnsDomain(domain: string): boolean {
-  return domain.includes('.');
-}
-
-// Validate DNS domain format
-function validateDnsDomain(domain: string): { valid: boolean; message?: string } {
-  // Remove protocol if present
-  const cleanDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
-
-  // Check for valid domain format
-  const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]*(\.[a-zA-Z0-9][a-zA-Z0-9-]*)*\.[a-zA-Z]{2,}$/;
-  const parts = cleanDomain.split('.');
-
-  // Check each part
-  if (parts.length < 2) {
-    return { valid: false, message: 'Invalid domain format. Please enter a complete domain (e.g., example.com)' };
-  }
-
-  // Check each label (part between dots)
-  for (const part of parts) {
-    if (part.length === 0) {
-      return { valid: false, message: 'Invalid domain format. Consecutive dots are not allowed' };
-    }
-    if (part.length > 63) {
-      return { valid: false, message: 'Invalid domain format. Each label must be 63 characters or less' };
-    }
-    if (!/^[a-zA-Z0-9-]+$/.test(part)) {
-      return { valid: false, message: 'Invalid domain format. Domains can only contain letters, numbers, and hyphens' };
-    }
-    if (/^-|-$/.test(part)) {
-      return { valid: false, message: 'Invalid domain format. Labels cannot start or end with hyphens' };
-    }
-  }
-
-  if (!domainRegex.test(cleanDomain)) {
-    return { valid: false, message: 'Invalid domain format' };
-  }
-
-  return { valid: true };
-}
-
-// encrypt the hash with optional uid (device id)
-function encryptHash(
-  contentHash: string,
-  key: string | undefined,
-  uid?: string,
-): string {
-  try {
-    if (!key) {
-      throw new Error('Secret key not found');
-    }
-    // Combine contentHash-uid if uid exists, otherwise just contentHash (for backward compatibility)
-    const combined = uid ? `${contentHash}-${uid}` : contentHash;
-    const encrypted = CryptoJS.RC4.encrypt(combined, key).toString();
-    const urlSafe = encrypted
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-    return urlSafe;
-  } catch (error: any) {
-    console.error(`Encryption error: ${error.message}`);
-    return contentHash;
-  }
-}
 
 // create a synchronous path check function
 function checkPathSync(inputPath: string): string | null {
@@ -103,32 +44,25 @@ interface UploadOptions {
   [key: string]: any;
 }
 
-function formatEnsUrl(shortUrl?: string): string {
-  if (!shortUrl) return '';
-  const normalized = shortUrl.trim();
-  if (!normalized) return '';
-  if (/^https?:\/\//.test(normalized)) return normalized;
-  if (normalized.includes('.')) return `https://${normalized}`;
-  return `https://${normalized}.pinit.eth.limo`;
-}
+async function printUploadUrls(result: {
+  contentHash: string;
+  shortUrl?: string;
+  pinmeUrl?: string;
+  dnsUrl?: string;
+}): Promise<void> {
+  const projectName = APP_CONFIG.pinmeProjectName;
+  const { publicUrl, managementUrl } = await resolveUploadUrls(
+    result.contentHash,
+    {
+      dnsUrl: result.dnsUrl,
+      pinmeUrl: result.pinmeUrl,
+      shortUrl: result.shortUrl,
+    },
+    projectName,
+  );
 
-function printUploadUrls(contentHash: string, shortUrl?: string): void {
-  const uid = getUid();
-  const encryptedCID = encryptHash(contentHash, secretKey, uid);
-  const previewUrl = `${URL}${encryptedCID}`;
-  const projectName = process.env.PINME_PROJECT_NAME?.trim();
-
-  if (projectName) {
-    const ensUrl = formatEnsUrl(shortUrl);
-    console.log(chalk.cyan(`URL:`));
-    console.log(chalk.cyan(ensUrl || previewUrl));
-    console.log(chalk.cyan(`Management page:`));
-    console.log(chalk.cyan(previewUrl));
-    return;
-  }
-
-  console.log(chalk.cyan(`URL:`));
-  console.log(chalk.cyan(previewUrl));
+  printHighlightedUrl('URL', publicUrl, 'primary');
+  printHighlightedUrl('Management URL', managementUrl, 'management');
 }
 
 function getDomainFromArgs(): string | null {
@@ -145,20 +79,29 @@ function getDnsFromArgs(): boolean {
   return args.includes('--dns') || args.includes('-D');
 }
 
-async function checkVipStatus(authConfig: { address: string; token: string }): Promise<boolean> {
-  console.log(chalk.blue('Checking VIP status...'));
+async function checkWalletBalanceStatus(authConfig: {
+  address: string;
+  token: string;
+}): Promise<boolean> {
+  console.log(chalk.blue('Checking wallet balance...'));
   try {
-    const vipResult = await isVip(authConfig.address, authConfig.token);
-    if (!vipResult.data?.is_vip) {
+    const balanceResult = await getWalletBalance(
+      authConfig.address,
+      authConfig.token,
+    );
+    const balance = Number(balanceResult.data?.wallet_balance_usd ?? 0);
+    if (!Number.isFinite(balance) || balance <= 0) {
       return false;
     }
-    console.log(chalk.green('VIP verified.'));
+    console.log(
+      chalk.green(`Wallet balance available: $${balance.toFixed(2)}`),
+    );
     return true;
   } catch (e: any) {
-    if (e.message === 'Token expired') {
+    if (e.message === 'Token expired' || e?.name === 'CliError') {
       throw e;
     }
-    console.log(chalk.yellow('Failed to check VIP status, continuing...'));
+    console.log(chalk.yellow('Failed to check wallet balance, continuing...'));
     return true;
   }
 }
@@ -169,19 +112,28 @@ async function bindDomain(
   isDns: boolean,
   authConfig: { address: string; token: string },
 ): Promise<boolean> {
-  const displayDomain = domain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const displayDomain = normalizeDomain(domain);
 
   if (isDns) {
     // DNS domain binding
     console.log(chalk.blue('Binding DNS domain...'));
-    const dnsResult = await bindDnsDomainV4(displayDomain, contentHash, authConfig.address, authConfig.token);
+    const dnsResult = await bindDnsDomainV4(
+      displayDomain,
+      contentHash,
+      authConfig.address,
+      authConfig.token,
+    );
     if (dnsResult.code !== 200) {
       console.log(chalk.red(`DNS binding failed: ${dnsResult.msg}`));
       return false;
     }
     console.log(chalk.green(`DNS bind success: ${displayDomain}`));
     console.log(chalk.white(`Visit: https://${displayDomain}`));
-    console.log(chalk.cyan('\n📚 DNS Setup Guide: https://pinme.eth.limo/#/docs?id=custom-domain'));
+    console.log(
+      chalk.cyan(
+        '\n📚 DNS Setup Guide: https://pinme.eth.limo/#/docs?id=custom-domain',
+      ),
+    );
   } else {
     // Pinme subdomain binding
     console.log(chalk.blue('Binding Pinme subdomain...'));
@@ -191,7 +143,8 @@ async function bindDomain(
       return false;
     }
     console.log(chalk.green(`Bind success: ${displayDomain}`));
-    console.log(chalk.white(`Visit: https://${displayDomain}.pinit.eth.limo`));
+    const rootDomain = await (await import('./utils/pinmeApi')).getRootDomain();
+    console.log(chalk.white(`Visit: https://${displayDomain}.${rootDomain}`));
   }
   return true;
 }
@@ -208,20 +161,15 @@ export default async (options?: UploadOptions): Promise<void> => {
       }),
     );
 
+    const authConfig = getAuthConfig();
+    if (!authConfig) {
+      console.log(chalk.red('Please login first. Run: pinme login'));
+      return;
+    }
+
     // Check if domain/dns options are provided
     const domainArg = getDomainFromArgs();
     const dnsArg = getDnsFromArgs();
-    const needsAuth = !!domainArg || dnsArg;
-
-    // Check auth only when domain/dns options are provided
-    let authConfig: { address: string; token: string } | null = null;
-    if (needsAuth) {
-      authConfig = getAuthConfig();
-      if (!authConfig) {
-        console.log(chalk.red('Please login first. Run: pinme set-appkey <AppKey>'));
-        return;
-      }
-    }
 
     // if the parameter is passed, upload directly, pinme upload /path/to/dir
     const argPath = process.argv[3];
@@ -236,7 +184,9 @@ export default async (options?: UploadOptions): Promise<void> => {
 
       // Auto-detect domain type
       const isDns = dnsArg || (domainArg ? isDnsDomain(domainArg) : false);
-      const displayDomain = domainArg?.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      const displayDomain = domainArg
+        ?.replace(/^https?:\/\//, '')
+        .replace(/\/$/, '');
 
       // Validate DNS domain format
       if (isDns && domainArg) {
@@ -247,12 +197,17 @@ export default async (options?: UploadOptions): Promise<void> => {
         }
       }
 
-      // Domain binding requires VIP
+      // Domain binding now uses wallet balance instead of VIP.
       if (domainArg) {
         try {
-          const isVipUser = await checkVipStatus(authConfig);
-          if (!isVipUser) {
-            console.log(chalk.red('Domain binding requires VIP. Please upgrade to VIP first.'));
+          const hasWalletBalance = await checkWalletBalanceStatus(authConfig);
+          if (!hasWalletBalance) {
+            console.log(
+              chalk.red(
+                'Insufficient wallet balance. Please recharge your wallet first.',
+              ),
+            );
+            printRechargeUrl(getWalletRechargeUrl());
             return;
           }
         } catch (e: any) {
@@ -287,9 +242,12 @@ export default async (options?: UploadOptions): Promise<void> => {
       console.log(chalk.blue(`uploading ${absolutePath} to ipfs...`));
       let result;
       try {
-        result = await upload(absolutePath);
+        result = await uploadPath(absolutePath, {
+          projectName: APP_CONFIG.pinmeProjectName,
+          uid: authConfig?.address,
+        });
       } catch (error: any) {
-        console.error(chalk.red(`Upload error: ${error.message}`));
+        printCliError(error, 'Upload failed.');
         process.exit(1);
       }
 
@@ -299,11 +257,9 @@ export default async (options?: UploadOptions): Promise<void> => {
       }
 
       console.log(
-        chalk.cyan(
-          figlet.textSync('Successful', { horizontalLayout: 'full' }),
-        ),
+        chalk.cyan(figlet.textSync('Successful', { horizontalLayout: 'full' })),
       );
-      printUploadUrls(result.contentHash, result.shortUrl);
+      await printUploadUrls(result);
 
       // optional: bind domain after upload
       if (domainArg) {
@@ -344,7 +300,9 @@ export default async (options?: UploadOptions): Promise<void> => {
 
       // Auto-detect domain type
       const isDns = dnsArg || (domainArg ? isDnsDomain(domainArg) : false);
-      const displayDomain = domainArg?.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      const displayDomain = domainArg
+        ?.replace(/^https?:\/\//, '')
+        .replace(/\/$/, '');
 
       // Validate DNS domain format
       if (isDns && domainArg) {
@@ -355,12 +313,17 @@ export default async (options?: UploadOptions): Promise<void> => {
         }
       }
 
-      // Domain binding requires VIP
+      // Domain binding now uses wallet balance instead of VIP.
       if (domainArg) {
         try {
-          const isVipUser = await checkVipStatus(authConfig);
-          if (!isVipUser) {
-            console.log(chalk.red('Domain binding requires VIP. Please upgrade to VIP first.'));
+          const hasWalletBalance = await checkWalletBalanceStatus(authConfig);
+          if (!hasWalletBalance) {
+            console.log(
+              chalk.red(
+                'Insufficient wallet balance. Please recharge your wallet first.',
+              ),
+            );
+            printRechargeUrl(getWalletRechargeUrl());
             return;
           }
         } catch (e: any) {
@@ -395,9 +358,12 @@ export default async (options?: UploadOptions): Promise<void> => {
       console.log(chalk.blue(`uploading ${absolutePath} to ipfs...`));
       let result;
       try {
-        result = await upload(absolutePath);
+        result = await uploadPath(absolutePath, {
+          projectName: APP_CONFIG.pinmeProjectName,
+          uid: authConfig?.address,
+        });
       } catch (error: any) {
-        console.error(chalk.red(`Upload error: ${error.message}`));
+        printCliError(error, 'Upload failed.');
         process.exit(1);
       }
 
@@ -407,18 +373,16 @@ export default async (options?: UploadOptions): Promise<void> => {
       }
 
       console.log(
-        chalk.cyan(
-          figlet.textSync('Successful', { horizontalLayout: 'full' }),
-        ),
+        chalk.cyan(figlet.textSync('Successful', { horizontalLayout: 'full' })),
       );
-      printUploadUrls(result.contentHash, result.shortUrl);
+      await printUploadUrls(result);
       if (domainArg) {
         console.log(
           chalk.blue(
             `Binding domain: ${displayDomain} with CID: ${result.contentHash}`,
           ),
         );
-        
+
         try {
           await bindDomain(domainArg, result.contentHash, isDns, authConfig);
         } catch (e: any) {
@@ -432,7 +396,6 @@ export default async (options?: UploadOptions): Promise<void> => {
       process.exit(0);
     }
   } catch (error: any) {
-    console.error(chalk.red(`error executing: ${error.message}`));
-    console.error(error.stack);
+    printCliError(error, 'Upload failed.');
   }
 };
