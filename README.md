@@ -17,6 +17,14 @@ It lets you quickly set up and launch a complete project with an integrated fron
 
 Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 
+> **PinMe Skill**
+>
+> Install the PinMe skill before using PinMe in agent workflows:
+>
+> ```bash
+> npx skills add glitternetwork/pinme
+> ```
+
 ## Table of Contents
 
 - [Quick Start](#quick-start)
