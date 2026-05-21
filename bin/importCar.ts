@@ -14,6 +14,15 @@ import { getAuthConfig } from './utils/webLogin';
 import { APP_CONFIG } from './utils/config';
 import { uploadPath } from './services/uploadService';
 import { printHighlightedUrl } from './utils/urlDisplay';
+import tracker, {
+  getPathKind,
+  getTrackErrorReason,
+} from './utils/tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './utils/trackerEvents';
 // get from environment variables
 
 import { checkNodeVersion } from './utils/checkNodeVersion';
@@ -111,6 +120,7 @@ export default async (options?: ImportOptions): Promise<void> => {
         console.log(chalk.red(`path ${argPath} does not exist`));
         return;
       }
+      const pathKind = getPathKind(absolutePath);
 
       // optional: pre-check domain availability before import
       if (domainArg) {
@@ -133,6 +143,11 @@ export default async (options?: ImportOptions): Promise<void> => {
           uid: getUid(),
         });
         if (result) {
+          void tracker.trackEvent(TRACK_EVENTS.importSuccess, TRACK_PAGES.import, {
+            a: resolveTrackAction(TRACK_EVENTS.importSuccess),
+            path_kind: pathKind,
+            has_domain: Boolean(domainArg),
+          });
           const uid = getUid();
           const encryptedCID = encryptHash(
             result.contentHash,
@@ -158,6 +173,12 @@ export default async (options?: ImportOptions): Promise<void> => {
             );
             const ok = await bindPinmeDomain(domainArg, result.contentHash);
             if (ok) {
+              void tracker.trackEvent(TRACK_EVENTS.domainBindSuccess, TRACK_PAGES.domain, {
+                a: resolveTrackAction(TRACK_EVENTS.domainBindSuccess),
+                domain_type: 'pinme_subdomain',
+                domain_name: domainArg,
+                bind_source: 'import',
+              });
               console.log(chalk.green(`Bind success: ${domainArg}`));
               const rootDomain = await getRootDomain();
               console.log(
@@ -166,12 +187,25 @@ export default async (options?: ImportOptions): Promise<void> => {
                 ),
               );
             } else {
+              void tracker.trackEvent(TRACK_EVENTS.domainBindFailed, TRACK_PAGES.domain, {
+                a: resolveTrackAction(TRACK_EVENTS.domainBindFailed),
+                domain_type: 'pinme_subdomain',
+                domain_name: domainArg,
+                bind_source: 'import',
+                reason: 'pinme_bind_failed',
+              });
               console.log(chalk.red('Binding failed. Please try again later.'));
             }
           }
           console.log(chalk.green('\n🎉 import successful, program exit'));
         }
       } catch (error: any) {
+        void tracker.trackEvent(TRACK_EVENTS.importFailed, TRACK_PAGES.import, {
+          a: resolveTrackAction(TRACK_EVENTS.importFailed),
+          path_kind: pathKind,
+          has_domain: Boolean(domainArg),
+          reason: getTrackErrorReason(error),
+        });
         printCliError(error, 'Import failed.');
       }
       process.exit(0);
@@ -192,6 +226,7 @@ export default async (options?: ImportOptions): Promise<void> => {
         console.log(chalk.red(`path ${answer.path} does not exist`));
         return;
       }
+      const pathKind = getPathKind(absolutePath);
 
       // optional: interactive flow may also parse --domain, reuse the same arg parsing
       if (domainArg) {
@@ -215,6 +250,11 @@ export default async (options?: ImportOptions): Promise<void> => {
         });
 
         if (result) {
+          void tracker.trackEvent(TRACK_EVENTS.importSuccess, TRACK_PAGES.import, {
+            a: resolveTrackAction(TRACK_EVENTS.importSuccess),
+            path_kind: pathKind,
+            has_domain: Boolean(domainArg),
+          });
           const uid = getUid();
           const encryptedCID = encryptHash(
             result.contentHash,
@@ -239,6 +279,12 @@ export default async (options?: ImportOptions): Promise<void> => {
             );
             const ok = await bindPinmeDomain(domainArg, result.contentHash);
             if (ok) {
+              void tracker.trackEvent(TRACK_EVENTS.domainBindSuccess, TRACK_PAGES.domain, {
+                a: resolveTrackAction(TRACK_EVENTS.domainBindSuccess),
+                domain_type: 'pinme_subdomain',
+                domain_name: domainArg,
+                bind_source: 'import',
+              });
               console.log(chalk.green(`Bind success: ${domainArg}`));
               const rootDomain = await getRootDomain();
               console.log(
@@ -247,17 +293,34 @@ export default async (options?: ImportOptions): Promise<void> => {
                 ),
               );
             } else {
+              void tracker.trackEvent(TRACK_EVENTS.domainBindFailed, TRACK_PAGES.domain, {
+                a: resolveTrackAction(TRACK_EVENTS.domainBindFailed),
+                domain_type: 'pinme_subdomain',
+                domain_name: domainArg,
+                bind_source: 'import',
+                reason: 'pinme_bind_failed',
+              });
               console.log(chalk.red('Binding failed. Please try again later.'));
             }
           }
           console.log(chalk.green('\n🎉 import successful, program exit'));
         }
       } catch (error: any) {
+        void tracker.trackEvent(TRACK_EVENTS.importFailed, TRACK_PAGES.import, {
+          a: resolveTrackAction(TRACK_EVENTS.importFailed),
+          path_kind: pathKind,
+          has_domain: Boolean(domainArg),
+          reason: getTrackErrorReason(error),
+        });
         printCliError(error, 'Import failed.');
       }
       process.exit(0);
     }
   } catch (error: any) {
+    void tracker.trackEvent(TRACK_EVENTS.importFailed, TRACK_PAGES.import, {
+      a: resolveTrackAction(TRACK_EVENTS.importFailed),
+      reason: getTrackErrorReason(error),
+    });
     printCliError(error, 'Import failed.');
   }
 };

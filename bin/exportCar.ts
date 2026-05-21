@@ -10,6 +10,12 @@ import { printCliError } from './utils/cliError';
 import { requestCarExport, checkCarExportStatus } from './utils/pinmeApi';
 import { getUid } from './utils/getDeviceId';
 import { checkNodeVersion } from './utils/checkNodeVersion';
+import tracker, { getTrackErrorReason } from './utils/tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './utils/trackerEvents';
 
 checkNodeVersion();
 
@@ -235,6 +241,11 @@ export default async (): Promise<void> => {
       );
 
       if (!downloadUrl) {
+        void tracker.trackEvent(TRACK_EVENTS.exportFailed, TRACK_PAGES.export, {
+          a: resolveTrackAction(TRACK_EVENTS.exportFailed),
+          cid,
+          reason: 'export_failed_or_timed_out',
+        });
         console.log(chalk.red('Export failed or timed out.'));
         return;
       }
@@ -242,6 +253,11 @@ export default async (): Promise<void> => {
       // Step 3: Download CAR file
       const success = await downloadCarFile(downloadUrl, finalOutputPath);
       if (success) {
+        void tracker.trackEvent(TRACK_EVENTS.exportSuccess, TRACK_PAGES.export, {
+          a: resolveTrackAction(TRACK_EVENTS.exportSuccess),
+          cid,
+          output_dir: outputDir,
+        });
         const fileSize = fs.statSync(finalOutputPath).size;
         const fileSizeMB = (fileSize / (1024 * 1024)).toFixed(2);
         console.log(
@@ -254,13 +270,27 @@ export default async (): Promise<void> => {
         console.log(chalk.cyan(`Size: ${fileSizeMB} MB`));
         console.log(chalk.cyan(`CID: ${cid}`));
       } else {
+        void tracker.trackEvent(TRACK_EVENTS.exportFailed, TRACK_PAGES.export, {
+          a: resolveTrackAction(TRACK_EVENTS.exportFailed),
+          cid,
+          reason: 'download_failed',
+        });
         console.log(chalk.red('Download failed.'));
       }
     } catch (error: any) {
+      void tracker.trackEvent(TRACK_EVENTS.exportFailed, TRACK_PAGES.export, {
+        a: resolveTrackAction(TRACK_EVENTS.exportFailed),
+        cid,
+        reason: getTrackErrorReason(error),
+      });
       spinner.fail(`Error: ${error.message}`);
       printCliError(error, 'Export failed.');
     }
   } catch (error: any) {
+    void tracker.trackEvent(TRACK_EVENTS.exportFailed, TRACK_PAGES.export, {
+      a: resolveTrackAction(TRACK_EVENTS.exportFailed),
+      reason: getTrackErrorReason(error),
+    });
     printCliError(error, 'Export failed.');
   }
 };

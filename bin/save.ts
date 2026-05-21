@@ -24,6 +24,12 @@ import {
 import { APP_CONFIG, getPinmeApiUrl } from './utils/config';
 import { uploadPath } from './services/uploadService';
 import { printHighlightedUrl } from './utils/urlDisplay';
+import tracker, { getTrackErrorReason } from './utils/tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './utils/trackerEvents';
 
 const PROJECT_DIR = process.cwd();
 interface SaveOptions {
@@ -423,8 +429,22 @@ export default async function saveCmd(options: SaveOptions): Promise<void> {
       'management',
     );
     console.log(chalk.green('\nDeployment complete.'));
+    void tracker.trackEvent(TRACK_EVENTS.projectSaveSuccess, TRACK_PAGES.deploy, {
+      a: resolveTrackAction(TRACK_EVENTS.projectSaveSuccess),
+      project_name: projectName,
+      has_domain: Boolean(options.domain),
+      domain_type: options.domain
+        ? (isDnsDomain(options.domain) ? 'dns' : 'pinme_subdomain')
+        : undefined,
+    });
     process.exit(0);
   } catch (error: any) {
+    void tracker.trackEvent(TRACK_EVENTS.projectSaveFailed, TRACK_PAGES.deploy, {
+      a: resolveTrackAction(TRACK_EVENTS.projectSaveFailed),
+      project_name: options.projectName || options.name,
+      has_domain: Boolean(options.domain),
+      reason: getTrackErrorReason(error),
+    });
     printCliError(error, 'Save failed.');
     process.exit(1);
   }

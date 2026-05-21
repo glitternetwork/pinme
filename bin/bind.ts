@@ -17,6 +17,15 @@ import {
   validateDnsDomain,
 } from './utils/domainValidator';
 import { uploadPath } from './services/uploadService';
+import tracker, {
+  getPathKind,
+  getTrackErrorReason,
+} from './utils/tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './utils/trackerEvents';
 
 interface Args {
   domain?: string;
@@ -114,6 +123,8 @@ export default async function bindCmd(): Promise<void> {
     // Auto-detect domain type if not explicitly specified
     const isDns = dns || isDnsDomain(domain);
     const displayDomain = normalizeDomain(domain);
+    const pathKind = getPathKind(path.resolve(targetPath));
+    const domainType = isDns ? 'dns' : 'pinme_subdomain';
 
     // Validate DNS domain format
     if (isDns) {
@@ -165,9 +176,20 @@ export default async function bindCmd(): Promise<void> {
     console.log(chalk.blue(`Uploading: ${absolutePath}`));
     const up = await uploadPath(absolutePath, { uid: authConfig.address });
     if (!up?.contentHash) {
+      void tracker.trackEvent(TRACK_EVENTS.uploadFailed, TRACK_PAGES.upload, {
+        a: resolveTrackAction(TRACK_EVENTS.uploadFailed),
+        path_kind: pathKind,
+        has_domain: true,
+        reason: 'no_content_hash',
+      });
       console.log(chalk.red('Upload failed, binding aborted.'));
       return;
     }
+    void tracker.trackEvent(TRACK_EVENTS.uploadSuccess, TRACK_PAGES.upload, {
+      a: resolveTrackAction(TRACK_EVENTS.uploadSuccess),
+      path_kind: pathKind,
+      has_domain: true,
+    });
     console.log(chalk.green(`Upload success, CID: ${up.contentHash}`));
 
     // Bind domain
@@ -182,9 +204,22 @@ export default async function bindCmd(): Promise<void> {
           authConfig.token,
         );
         if (dnsResult.code !== 200) {
+          void tracker.trackEvent(TRACK_EVENTS.domainBindFailed, TRACK_PAGES.domain, {
+            a: resolveTrackAction(TRACK_EVENTS.domainBindFailed),
+            domain_type: domainType,
+            domain_name: displayDomain,
+            bind_source: 'bind',
+            reason: dnsResult.msg || 'dns_bind_failed',
+          });
           console.log(chalk.red(`DNS binding failed: ${dnsResult.msg}`));
           return;
         }
+        void tracker.trackEvent(TRACK_EVENTS.domainBindSuccess, TRACK_PAGES.domain, {
+          a: resolveTrackAction(TRACK_EVENTS.domainBindSuccess),
+          domain_type: domainType,
+          domain_name: displayDomain,
+          bind_source: 'bind',
+        });
         console.log(chalk.green(`DNS bind success: ${displayDomain}`));
         console.log(chalk.white(`Visit: https://${displayDomain}`));
         console.log(
@@ -197,9 +232,22 @@ export default async function bindCmd(): Promise<void> {
         console.log(chalk.blue('Binding Pinme subdomain...'));
         const ok = await bindPinmeDomain(displayDomain, up.contentHash);
         if (!ok) {
+          void tracker.trackEvent(TRACK_EVENTS.domainBindFailed, TRACK_PAGES.domain, {
+            a: resolveTrackAction(TRACK_EVENTS.domainBindFailed),
+            domain_type: domainType,
+            domain_name: displayDomain,
+            bind_source: 'bind',
+            reason: 'pinme_bind_failed',
+          });
           console.log(chalk.red('Binding failed. Please try again later.'));
           return;
         }
+        void tracker.trackEvent(TRACK_EVENTS.domainBindSuccess, TRACK_PAGES.domain, {
+          a: resolveTrackAction(TRACK_EVENTS.domainBindSuccess),
+          domain_type: domainType,
+          domain_name: displayDomain,
+          bind_source: 'bind',
+        });
         console.log(chalk.green(`Bind success: ${displayDomain}`));
         const rootDomain = await getRootDomain();
         console.log(
@@ -213,6 +261,11 @@ export default async function bindCmd(): Promise<void> {
       throw e;
     }
   } catch (e: any) {
+    void tracker.trackEvent(TRACK_EVENTS.domainBindFailed, TRACK_PAGES.domain, {
+      a: resolveTrackAction(TRACK_EVENTS.domainBindFailed),
+      bind_source: 'bind',
+      reason: getTrackErrorReason(e),
+    });
     printCliError(e, 'Bind failed.');
   }
 }

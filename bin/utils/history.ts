@@ -5,6 +5,12 @@ import dayjs from 'dayjs';
 import chalk from 'chalk';
 import { formatSize } from './uploadLimits';
 import { getRootDomain } from './pinmeApi';
+import tracker, { getTrackErrorReason } from './tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './trackerEvents';
 
 // history file path
 const HISTORY_DIR = path.join(os.homedir(), '.pinme');
@@ -144,57 +150,72 @@ async function formatHistoryUrl(
 
 // display the upload history
 const displayUploadHistory = async (limit: number = 10): Promise<void> => {
-  const history = getUploadHistory(limit);
-  
-  if (history.length === 0) {
-    console.log(chalk.yellow('No upload history found.'));
-    return;
-  }
-  
-  console.log(chalk.cyan('Upload History:'));
-  console.log(chalk.cyan('-'.repeat(80)));
-  let rootDomain: string | null = null;
   try {
-    rootDomain = await getRootDomain();
-  } catch {
-    rootDomain = null;
-  }
-  
-  // Display recent records, up to limit records
-  const recentHistory = history.slice(-limit);
-  
-  for (const [index, item] of recentHistory.entries()) {
-    console.log(chalk.green(`${index + 1}. ${item.filename}`));
-    console.log(chalk.white(`   Path: ${item.path}`));
-    console.log(chalk.white(`   IPFS CID: ${item.contentHash}`));
-    const preferredUrl =
-      (await formatHistoryUrl(item.dnsUrl)) ||
-      (await formatHistoryUrl(item.pinmeUrl, {
-        appendRootDomain: true,
-        rootDomain,
-      })) ||
-      (await formatHistoryUrl(item.shortUrl, {
-        appendRootDomain: true,
-        rootDomain,
-      }));
-    if (preferredUrl) {
-      console.log(chalk.white(`   URL: ${preferredUrl}`));
+    const history = getUploadHistory(limit);
+
+    void tracker.trackEvent(TRACK_EVENTS.uploadHistoryViewed, TRACK_PAGES.upload, {
+      a: resolveTrackAction(TRACK_EVENTS.uploadHistoryViewed),
+      record_count: history.length,
+      limit,
+    });
+
+    if (history.length === 0) {
+      console.log(chalk.yellow('No upload history found.'));
+      return;
     }
-    console.log(chalk.white(`   Size: ${formatSize(item.size)}`));
-    console.log(chalk.white(`   Files: ${item.fileCount}`));
-    console.log(chalk.white(`   Type: ${item.type === 'directory' ? 'Directory' : 'File'}`));
-    if (item.timestamp) {
-      console.log(chalk.white(`   Date: ${new Date(item.timestamp).toLocaleString()}`));
-    }
+
+    console.log(chalk.cyan('Upload History:'));
     console.log(chalk.cyan('-'.repeat(80)));
+    let rootDomain: string | null = null;
+    try {
+      rootDomain = await getRootDomain();
+    } catch {
+      rootDomain = null;
+    }
+
+    // Display recent records, up to limit records
+    const recentHistory = history.slice(-limit);
+
+    for (const [index, item] of recentHistory.entries()) {
+      console.log(chalk.green(`${index + 1}. ${item.filename}`));
+      console.log(chalk.white(`   Path: ${item.path}`));
+      console.log(chalk.white(`   IPFS CID: ${item.contentHash}`));
+      const preferredUrl =
+        (await formatHistoryUrl(item.dnsUrl)) ||
+        (await formatHistoryUrl(item.pinmeUrl, {
+          appendRootDomain: true,
+          rootDomain,
+        })) ||
+        (await formatHistoryUrl(item.shortUrl, {
+          appendRootDomain: true,
+          rootDomain,
+        }));
+      if (preferredUrl) {
+        console.log(chalk.white(`   URL: ${preferredUrl}`));
+      }
+      console.log(chalk.white(`   Size: ${formatSize(item.size)}`));
+      console.log(chalk.white(`   Files: ${item.fileCount}`));
+      console.log(chalk.white(`   Type: ${item.type === 'directory' ? 'Directory' : 'File'}`));
+      if (item.timestamp) {
+        console.log(chalk.white(`   Date: ${new Date(item.timestamp).toLocaleString()}`));
+      }
+      console.log(chalk.cyan('-'.repeat(80)));
+    }
+
+    // display the statistics
+    const totalSize = history.reduce((sum, record) => sum + record.size, 0);
+    const totalFiles = history.reduce((sum, record) => sum + record.fileCount, 0);
+    console.log(chalk.bold(`Total Uploads: ${history.length}`));
+    console.log(chalk.bold(`Total Files: ${totalFiles}`));
+    console.log(chalk.bold(`Total Size: ${formatSize(totalSize)}`));
+  } catch (error: any) {
+    void tracker.trackEvent(TRACK_EVENTS.uploadHistoryFailed, TRACK_PAGES.upload, {
+      a: resolveTrackAction(TRACK_EVENTS.uploadHistoryFailed),
+      action: 'view',
+      reason: getTrackErrorReason(error),
+    });
+    throw error;
   }
-  
-  // display the statistics
-  const totalSize = history.reduce((sum, record) => sum + record.size, 0);
-  const totalFiles = history.reduce((sum, record) => sum + record.fileCount, 0);
-  console.log(chalk.bold(`Total Uploads: ${history.length}`));
-  console.log(chalk.bold(`Total Files: ${totalFiles}`));
-  console.log(chalk.bold(`Total Size: ${formatSize(totalSize)}`));
 };
 
 // clear the upload history
@@ -202,9 +223,18 @@ const clearUploadHistory = (): boolean => {
   try {
     ensureHistoryDir();
     fs.writeJsonSync(HISTORY_FILE, { uploads: [] });
+    void tracker.trackEvent(TRACK_EVENTS.uploadHistoryCleared, TRACK_PAGES.upload, {
+      a: resolveTrackAction(TRACK_EVENTS.uploadHistoryCleared),
+      cleared: true,
+    });
     console.log(chalk.green('Upload history cleared successfully.'));
     return true;
   } catch (error: any) {
+    void tracker.trackEvent(TRACK_EVENTS.uploadHistoryFailed, TRACK_PAGES.upload, {
+      a: resolveTrackAction(TRACK_EVENTS.uploadHistoryFailed),
+      action: 'clear',
+      reason: getTrackErrorReason(error),
+    });
     console.error(chalk.red(`Error clearing upload history: ${error.message}`));
     return false;
   }

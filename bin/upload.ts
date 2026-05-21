@@ -19,6 +19,15 @@ import {
 import { printCliError, printRechargeUrl } from './utils/cliError';
 import { resolveUploadUrls, uploadPath } from './services/uploadService';
 import { printHighlightedUrl } from './utils/urlDisplay';
+import tracker, {
+  getPathKind,
+  getTrackErrorReason,
+} from './utils/tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './utils/trackerEvents';
 
 import { checkNodeVersion } from './utils/checkNodeVersion';
 checkNodeVersion();
@@ -113,6 +122,7 @@ async function bindDomain(
   authConfig: { address: string; token: string },
 ): Promise<boolean> {
   const displayDomain = normalizeDomain(domain);
+  const domainType = isDns ? 'dns' : 'pinme_subdomain';
 
   if (isDns) {
     // DNS domain binding
@@ -124,9 +134,22 @@ async function bindDomain(
       authConfig.token,
     );
     if (dnsResult.code !== 200) {
+      void tracker.trackEvent(TRACK_EVENTS.domainBindFailed, TRACK_PAGES.domain, {
+        a: resolveTrackAction(TRACK_EVENTS.domainBindFailed),
+        domain_type: domainType,
+        domain_name: displayDomain,
+        bind_source: 'upload',
+        reason: dnsResult.msg || 'dns_bind_failed',
+      });
       console.log(chalk.red(`DNS binding failed: ${dnsResult.msg}`));
       return false;
     }
+    void tracker.trackEvent(TRACK_EVENTS.domainBindSuccess, TRACK_PAGES.domain, {
+      a: resolveTrackAction(TRACK_EVENTS.domainBindSuccess),
+      domain_type: domainType,
+      domain_name: displayDomain,
+      bind_source: 'upload',
+    });
     console.log(chalk.green(`DNS bind success: ${displayDomain}`));
     console.log(chalk.white(`Visit: https://${displayDomain}`));
     console.log(
@@ -139,9 +162,22 @@ async function bindDomain(
     console.log(chalk.blue('Binding Pinme subdomain...'));
     const ok = await bindPinmeDomain(displayDomain, contentHash);
     if (!ok) {
+      void tracker.trackEvent(TRACK_EVENTS.domainBindFailed, TRACK_PAGES.domain, {
+        a: resolveTrackAction(TRACK_EVENTS.domainBindFailed),
+        domain_type: domainType,
+        domain_name: displayDomain,
+        bind_source: 'upload',
+        reason: 'pinme_bind_failed',
+      });
       console.log(chalk.red('Binding failed. Please try again later.'));
       return false;
     }
+    void tracker.trackEvent(TRACK_EVENTS.domainBindSuccess, TRACK_PAGES.domain, {
+      a: resolveTrackAction(TRACK_EVENTS.domainBindSuccess),
+      domain_type: domainType,
+      domain_name: displayDomain,
+      bind_source: 'upload',
+    });
     console.log(chalk.green(`Bind success: ${displayDomain}`));
     const rootDomain = await (await import('./utils/pinmeApi')).getRootDomain();
     console.log(chalk.white(`Visit: https://${displayDomain}.${rootDomain}`));
@@ -181,6 +217,7 @@ export default async (options?: UploadOptions): Promise<void> => {
         console.log(chalk.red(`path ${argPath} does not exist`));
         return;
       }
+      const pathKind = getPathKind(absolutePath);
 
       // Auto-detect domain type
       const isDns = dnsArg || (domainArg ? isDnsDomain(domainArg) : false);
@@ -247,14 +284,33 @@ export default async (options?: UploadOptions): Promise<void> => {
           uid: authConfig?.address,
         });
       } catch (error: any) {
+        void tracker.trackEvent(TRACK_EVENTS.uploadFailed, TRACK_PAGES.upload, {
+          a: resolveTrackAction(TRACK_EVENTS.uploadFailed),
+          path_kind: pathKind,
+          has_domain: Boolean(domainArg),
+          reason: getTrackErrorReason(error),
+        });
         printCliError(error, 'Upload failed.');
         process.exit(1);
       }
 
       if (!result) {
+        void tracker.trackEvent(TRACK_EVENTS.uploadFailed, TRACK_PAGES.upload, {
+          a: resolveTrackAction(TRACK_EVENTS.uploadFailed),
+          path_kind: pathKind,
+          has_domain: Boolean(domainArg),
+          reason: 'no_result_returned',
+        });
         console.error(chalk.red('Upload failed: no result returned'));
         process.exit(1);
       }
+
+      void tracker.trackEvent(TRACK_EVENTS.uploadSuccess, TRACK_PAGES.upload, {
+        a: resolveTrackAction(TRACK_EVENTS.uploadSuccess),
+        path_kind: pathKind,
+        has_domain: Boolean(domainArg),
+        project_name: APP_CONFIG.pinmeProjectName,
+      });
 
       console.log(
         chalk.cyan(figlet.textSync('Successful', { horizontalLayout: 'full' })),
@@ -297,6 +353,7 @@ export default async (options?: UploadOptions): Promise<void> => {
         console.log(chalk.red(`path ${answer.path} does not exist`));
         return;
       }
+      const pathKind = getPathKind(absolutePath);
 
       // Auto-detect domain type
       const isDns = dnsArg || (domainArg ? isDnsDomain(domainArg) : false);
@@ -363,14 +420,33 @@ export default async (options?: UploadOptions): Promise<void> => {
           uid: authConfig?.address,
         });
       } catch (error: any) {
+        void tracker.trackEvent(TRACK_EVENTS.uploadFailed, TRACK_PAGES.upload, {
+          a: resolveTrackAction(TRACK_EVENTS.uploadFailed),
+          path_kind: pathKind,
+          has_domain: Boolean(domainArg),
+          reason: getTrackErrorReason(error),
+        });
         printCliError(error, 'Upload failed.');
         process.exit(1);
       }
 
       if (!result) {
+        void tracker.trackEvent(TRACK_EVENTS.uploadFailed, TRACK_PAGES.upload, {
+          a: resolveTrackAction(TRACK_EVENTS.uploadFailed),
+          path_kind: pathKind,
+          has_domain: Boolean(domainArg),
+          reason: 'no_result_returned',
+        });
         console.error(chalk.red('Upload failed: no result returned'));
         process.exit(1);
       }
+
+      void tracker.trackEvent(TRACK_EVENTS.uploadSuccess, TRACK_PAGES.upload, {
+        a: resolveTrackAction(TRACK_EVENTS.uploadSuccess),
+        path_kind: pathKind,
+        has_domain: Boolean(domainArg),
+        project_name: APP_CONFIG.pinmeProjectName,
+      });
 
       console.log(
         chalk.cyan(figlet.textSync('Successful', { horizontalLayout: 'full' })),

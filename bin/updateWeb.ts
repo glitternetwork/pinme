@@ -11,6 +11,12 @@ import {
 import { APP_CONFIG } from './utils/config';
 import { uploadPath } from './services/uploadService';
 import { printHighlightedUrl } from './utils/urlDisplay';
+import tracker, { getTrackErrorReason } from './utils/tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './utils/trackerEvents';
 
 const PROJECT_DIR = process.cwd();
 
@@ -123,8 +129,25 @@ export default async function updateWebCmd(options?: UpdateWebOptions): Promise<
     await deployFrontend(projectName);
 
     console.log(chalk.green('\nWeb update complete.'));
+    void tracker.trackEvent(
+      TRACK_EVENTS.projectUpdateWebSuccess,
+      TRACK_PAGES.deploy,
+      {
+        a: resolveTrackAction(TRACK_EVENTS.projectUpdateWebSuccess),
+        project_name: projectName,
+      },
+    );
     process.exit(0);
   } catch (error: any) {
+    void tracker.trackEvent(
+      TRACK_EVENTS.projectUpdateWebFailed,
+      TRACK_PAGES.deploy,
+      {
+        a: resolveTrackAction(TRACK_EVENTS.projectUpdateWebFailed),
+        project_name: options?.projectName || options?.name,
+        reason: getTrackErrorReason(error),
+      },
+    );
     printCliError(error, 'Web update failed.');
     process.exit(1);
   }

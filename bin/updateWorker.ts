@@ -11,6 +11,12 @@ import {
   printCliError,
 } from './utils/cliError';
 import { getPinmeApiUrl } from './utils/config';
+import tracker, { getTrackErrorReason } from './utils/tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './utils/trackerEvents';
 
 const PROJECT_DIR = process.cwd();
 interface UpdateWorkerOptions {
@@ -235,8 +241,26 @@ export default async function updateWorkerCmd(options?: UpdateWorkerOptions): Pr
     await updateWorker(workerJsPath, modulePaths, metadata, projectName);
 
     console.log(chalk.green('\nWorker update complete.'));
+    void tracker.trackEvent(
+      TRACK_EVENTS.projectUpdateWorkerSuccess,
+      TRACK_PAGES.deploy,
+      {
+        a: resolveTrackAction(TRACK_EVENTS.projectUpdateWorkerSuccess),
+        project_name: projectName,
+        module_count: modulePaths.length,
+      },
+    );
     process.exit(0);
   } catch (error: any) {
+    void tracker.trackEvent(
+      TRACK_EVENTS.projectUpdateWorkerFailed,
+      TRACK_PAGES.deploy,
+      {
+        a: resolveTrackAction(TRACK_EVENTS.projectUpdateWorkerFailed),
+        project_name: options?.projectName || options?.name,
+        reason: getTrackErrorReason(error),
+      },
+    );
     printCliError(error, 'Worker update failed.');
     process.exit(1);
   }
