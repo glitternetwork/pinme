@@ -9,6 +9,12 @@ import {
   printCliError,
 } from './utils/cliError';
 import { getPinmeApiUrl } from './utils/config';
+import tracker, { getTrackErrorReason } from './utils/tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './utils/trackerEvents';
 
 const PROJECT_DIR = process.cwd();
 interface UpdateDbOptions {
@@ -178,8 +184,26 @@ export default async function updateDbCmd(options?: UpdateDbOptions): Promise<vo
     await updateDb(sqlFiles, projectName);
 
     console.log(chalk.green('\nDatabase update complete.'));
+    void tracker.trackEvent(
+      TRACK_EVENTS.projectUpdateDbSuccess,
+      TRACK_PAGES.deploy,
+      {
+        a: resolveTrackAction(TRACK_EVENTS.projectUpdateDbSuccess),
+        project_name: projectName,
+        sql_file_count: sqlFiles.length,
+      },
+    );
     process.exit(0);
   } catch (error: any) {
+    void tracker.trackEvent(
+      TRACK_EVENTS.projectUpdateDbFailed,
+      TRACK_PAGES.deploy,
+      {
+        a: resolveTrackAction(TRACK_EVENTS.projectUpdateDbFailed),
+        project_name: options?.projectName || options?.name,
+        reason: getTrackErrorReason(error),
+      },
+    );
     printCliError(error, 'Database update failed.');
     process.exit(1);
   }

@@ -5,6 +5,12 @@ import fs from 'fs-extra';
 import path from 'path';
 import { getAuthHeaders } from './utils/webLogin';
 import { getPinmeApiUrl } from './utils/config';
+import tracker, { getTrackErrorReason } from './utils/tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './utils/trackerEvents';
 
 interface DeleteOptions {
     name?: string;
@@ -95,6 +101,17 @@ export default async function deleteCmd(options: DeleteOptions): Promise<void> {
         const data = response.data;
 
         if (data.code === 200) {
+            void tracker.trackEvent(
+                TRACK_EVENTS.projectDeleteSuccess,
+                TRACK_PAGES.project,
+                {
+                    a: resolveTrackAction(TRACK_EVENTS.projectDeleteSuccess),
+                    project_name: data.data.project_name,
+                    domain_deleted: Boolean(data.data.domain_deleted),
+                    worker_deleted: Boolean(data.data.worker_deleted),
+                    database_deleted: Boolean(data.data.database_deleted),
+                },
+            );
             console.log(chalk.green('\n✅ Project deleted successfully!'));
             console.log(chalk.gray(`\nProject: ${data.data.project_name}`));
             console.log(chalk.gray(`   Domain deleted: ${data.data.domain_deleted ? '✅' : '❌'}`));
@@ -109,6 +126,16 @@ export default async function deleteCmd(options: DeleteOptions): Promise<void> {
 
         process.exit(0);
     } catch (error: any) {
+        void tracker.trackEvent(
+            TRACK_EVENTS.projectDeleteFailed,
+            TRACK_PAGES.project,
+            {
+                a: resolveTrackAction(TRACK_EVENTS.projectDeleteFailed),
+                project_name: options.name || getProjectName() || undefined,
+                force: Boolean(options.force),
+                reason: getTrackErrorReason(error),
+            },
+        );
         console.log(chalk.red(error));
         const errorMsg = error.response?.data?.msg
             || error.message

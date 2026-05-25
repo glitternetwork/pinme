@@ -8,3 +8,4 @@ node_modules
 .catpaw
 .claude/settings.local.json
 chrome-test-1
+docs

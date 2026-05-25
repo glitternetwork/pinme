@@ -2,10 +2,20 @@ import chalk from 'chalk';
 import dayjs from 'dayjs';
 import { printCliError } from './utils/cliError';
 import { getMyDomains } from './utils/pinmeApi';
+import tracker, { getTrackErrorReason } from './utils/tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './utils/trackerEvents';
 
 export default async function myDomainsCmd(): Promise<void> {
   try {
     const list = await getMyDomains();
+    void tracker.trackEvent(TRACK_EVENTS.myDomainsSuccess, TRACK_PAGES.domain, {
+      a: resolveTrackAction(TRACK_EVENTS.myDomainsSuccess),
+      domain_count: list.length,
+    });
     if (!list.length) {
       console.log(chalk.yellow('No bound domains found.'));
       return;
@@ -26,7 +36,10 @@ export default async function myDomainsCmd(): Promise<void> {
       console.log(chalk.cyan('-'.repeat(80)));
     });
   } catch (e: any) {
+    void tracker.trackEvent(TRACK_EVENTS.myDomainsFailed, TRACK_PAGES.domain, {
+      a: resolveTrackAction(TRACK_EVENTS.myDomainsFailed),
+      reason: getTrackErrorReason(e),
+    });
     printCliError(e, 'Failed to fetch domains.');
   }
 }
-

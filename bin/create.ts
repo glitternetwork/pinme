@@ -15,6 +15,12 @@ import {
 import { APP_CONFIG, getPinmeApiUrl } from './utils/config';
 import { uploadPath } from './services/uploadService';
 import { printHighlightedUrl } from './utils/urlDisplay';
+import tracker, { getTrackErrorReason } from './utils/tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './utils/trackerEvents';
 
 // Template directory - relative to bin folder (works both in dev and npm)
 const PROJECT_DIR = process.cwd();
@@ -590,8 +596,30 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
     console.log(chalk.gray(`   cd ${projectName}`));
     console.log(chalk.gray(`   pinme save`));
 
+    void tracker.trackEvent(
+      TRACK_EVENTS.projectCreateSuccess,
+      TRACK_PAGES.project,
+      {
+        a: resolveTrackAction(TRACK_EVENTS.projectCreateSuccess),
+        project_name: workerData.project_name,
+        template_branch: TEMPLATE_BRANCH,
+        force: Boolean(options.force),
+      },
+    );
+
     process.exit(0);
   } catch (error: any) {
+    void tracker.trackEvent(
+      TRACK_EVENTS.projectCreateFailed,
+      TRACK_PAGES.project,
+      {
+        a: resolveTrackAction(TRACK_EVENTS.projectCreateFailed),
+        project_name: options.name,
+        template_branch: TEMPLATE_BRANCH,
+        force: Boolean(options.force),
+        reason: getTrackErrorReason(error),
+      },
+    );
     printCliError(error, 'Project creation failed.');
     process.exit(1);
   }

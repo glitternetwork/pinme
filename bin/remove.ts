@@ -2,6 +2,12 @@ import chalk from 'chalk';
 import inquirer from 'inquirer';
 import figlet from 'figlet';
 import { removeFromIpfs } from './utils/removeFromIpfs';
+import tracker, { getTrackErrorReason } from './utils/tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './utils/trackerEvents';
 
 interface RemoveOptions {
   [key: string]: any;
@@ -97,6 +103,10 @@ export default async (options?: RemoveOptions): Promise<void> => {
       try {
         const success = await removeFromIpfs(parsedInput.value, parsedInput.type);
         if (success) {
+          void tracker.trackEvent(TRACK_EVENTS.removeSuccess, TRACK_PAGES.remove, {
+            a: resolveTrackAction(TRACK_EVENTS.removeSuccess),
+            input_type: parsedInput.type,
+          });
           console.log(
             chalk.cyan(
               figlet.textSync('Successful', { horizontalLayout: 'full' }),
@@ -104,6 +114,11 @@ export default async (options?: RemoveOptions): Promise<void> => {
           );
         }
       } catch (error: any) {
+        void tracker.trackEvent(TRACK_EVENTS.removeFailed, TRACK_PAGES.remove, {
+          a: resolveTrackAction(TRACK_EVENTS.removeFailed),
+          input_type: parsedInput.type,
+          reason: getTrackErrorReason(error),
+        });
         console.error(chalk.red(`Error: ${error.message}`));
       }
       return;
@@ -172,6 +187,10 @@ export default async (options?: RemoveOptions): Promise<void> => {
       try {
         const success = await removeFromIpfs(parsedInput.value, parsedInput.type);
         if (success) {
+          void tracker.trackEvent(TRACK_EVENTS.removeSuccess, TRACK_PAGES.remove, {
+            a: resolveTrackAction(TRACK_EVENTS.removeSuccess),
+            input_type: parsedInput.type,
+          });
           console.log(
             chalk.cyan(
               figlet.textSync('Successful', { horizontalLayout: 'full' }),
@@ -179,10 +198,19 @@ export default async (options?: RemoveOptions): Promise<void> => {
           );
         }
       } catch (error: any) {
+        void tracker.trackEvent(TRACK_EVENTS.removeFailed, TRACK_PAGES.remove, {
+          a: resolveTrackAction(TRACK_EVENTS.removeFailed),
+          input_type: parsedInput.type,
+          reason: getTrackErrorReason(error),
+        });
         console.error(chalk.red(`Error: ${error.message}`));
       }
     }
   } catch (error: any) {
+    void tracker.trackEvent(TRACK_EVENTS.removeFailed, TRACK_PAGES.remove, {
+      a: resolveTrackAction(TRACK_EVENTS.removeFailed),
+      reason: getTrackErrorReason(error),
+    });
     console.error(chalk.red(`Error executing remove command: ${error.message}`));
     console.error(error.stack);
   }

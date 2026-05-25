@@ -3,6 +3,12 @@ import inquirer from 'inquirer';
 import { setAuthToken } from './utils/webLogin';
 import { getDeviceId } from './utils/getDeviceId';
 import { bindAnonymousDevice } from './utils/pinmeApi';
+import tracker, { getTrackErrorReason } from './utils/tracker';
+import {
+  TRACK_EVENTS,
+  TRACK_PAGES,
+  resolveTrackAction,
+} from './utils/trackerEvents';
 
 export default async function setAppKeyCmd(): Promise<void> {
   try {
@@ -33,8 +39,17 @@ export default async function setAppKeyCmd(): Promise<void> {
     } else {
       console.log(chalk.yellow('Anonymous history merge not confirmed. You may retry later.'));
     }
+
+    void tracker.trackEvent(TRACK_EVENTS.appKeySetSuccess, TRACK_PAGES.auth, {
+      a: resolveTrackAction(TRACK_EVENTS.appKeySetSuccess),
+      merged_anonymous_history: ok,
+      has_token_address: Boolean(saved.address),
+    });
   } catch (e: any) {
+    void tracker.trackEvent(TRACK_EVENTS.appKeySetFailed, TRACK_PAGES.auth, {
+      a: resolveTrackAction(TRACK_EVENTS.appKeySetFailed),
+      reason: getTrackErrorReason(e),
+    });
     console.log(chalk.red(`Failed to set AppKey: ${e?.message || e}`));
   }
 }
-

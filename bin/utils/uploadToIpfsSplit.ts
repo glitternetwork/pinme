@@ -22,6 +22,7 @@ const RETRY_DELAY = APP_CONFIG.upload.retryDelayMs;
 const TIMEOUT = APP_CONFIG.upload.timeoutMs;
 const MAX_POLL_TIME = APP_CONFIG.upload.maxPollTimeMs;
 const POLL_INTERVAL = APP_CONFIG.upload.pollIntervalMs;
+const COMPLETE_TO_STATUS_DELAY = 5000;
 const PROGRESS_UPDATE_INTERVAL = 200; // ms
 const EXPECTED_UPLOAD_TIME = 60000; // 60 seconds
 const MAX_PROGRESS = 0.9; // 90%
@@ -142,11 +143,18 @@ function createUploadBusinessError(
   );
 }
 
-function logAxiosErrorDetails(prefix: string, error: any): void {
+function logAxiosErrorDetails(
+  prefix: string,
+  error: any,
+  traceId?: string,
+): void {
   const status = error?.response?.status;
   const responseData = error?.response?.data;
 
   console.error(`[pinme upload] ${prefix}`);
+  if (traceId) {
+    console.error(`[pinme upload] trace_id: ${traceId}`);
+  }
   console.error(`[pinme upload] status: ${status ?? 'unknown'}`);
 
   if (responseData === undefined) {
@@ -159,6 +167,20 @@ function logAxiosErrorDetails(prefix: string, error: any): void {
   } catch {
     console.error(`[pinme upload] response: ${String(responseData)}`);
   }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function appendTraceIdToError(error: unknown, traceId: string): Error {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (message.includes(`trace_id: ${traceId}`)) {
+    return error instanceof Error ? error : new Error(message);
+  }
+
+  return new Error(`${message} (trace_id: ${traceId})`);
 }
 
 function isStorageLimitError(error: any): boolean {
@@ -672,10 +694,20 @@ async function getChunkStatus(
     );
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      logAxiosErrorDetails('up_status failed', error);
-      throw formatAxiosError('Upload status check failed', error);
+      logAxiosErrorDetails('up_status failed', error, sessionId);
+      throw formatAxiosError(
+        `Upload status check failed (trace_id: ${sessionId})`,
+        error,
+      );
     }
-    throw error;
+    console.error('[pinme upload] up_status failed');
+    console.error(`[pinme upload] trace_id: ${sessionId}`);
+    console.error(
+      `[pinme upload] reason: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    throw appendTraceIdToError(error, sessionId);
   }
 }
 
@@ -686,7 +718,7 @@ async function monitorChunkProgress(
   progressBar?: StepProgressBar,
 ): Promise<UploadResult | null> {
   let consecutiveErrors = 0;
-  const startTime = Date.now();
+  let startTime = Date.now();
 
   // Start simulating progress
   if (progressBar) {
@@ -694,6 +726,9 @@ async function monitorChunkProgress(
   }
 
   try {
+    await delay(COMPLETE_TO_STATUS_DELAY);
+    startTime = Date.now();
+
     while (Date.now() - startTime < MAX_POLL_TIME) {
       try {
         const status = await getChunkStatus(traceId, deviceId, options);
@@ -725,7 +760,9 @@ async function monitorChunkProgress(
     }
 
     const maxPollTimeMinutes = Math.floor(MAX_POLL_TIME / (60 * 1000));
-    throw new Error(`Polling timeout after ${maxPollTimeMinutes} minutes`);
+    throw new Error(
+      `Polling timeout after ${maxPollTimeMinutes} minutes (trace_id: ${traceId})`,
+    );
   } finally {
     // Ensure simulating progress is stopped
     if (progressBar) {
