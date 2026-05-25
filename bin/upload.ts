@@ -53,13 +53,15 @@ interface UploadOptions {
   [key: string]: any;
 }
 
-async function printUploadUrls(result: {
-  contentHash: string;
-  shortUrl?: string;
-  pinmeUrl?: string;
-  dnsUrl?: string;
-}): Promise<void> {
-  const projectName = APP_CONFIG.pinmeProjectName;
+async function printUploadUrls(
+  result: {
+    contentHash: string;
+    shortUrl?: string;
+    pinmeUrl?: string;
+    dnsUrl?: string;
+  },
+  projectName?: string,
+): Promise<void> {
   const { publicUrl, managementUrl } = await resolveUploadUrls(
     result.contentHash,
     {
@@ -72,6 +74,77 @@ async function printUploadUrls(result: {
 
   printHighlightedUrl('URL', publicUrl, 'primary');
   printHighlightedUrl('Management URL', managementUrl, 'management');
+}
+
+function readProjectNameFromConfig(configPath: string): string | undefined {
+  try {
+    const config = fs.readFileSync(configPath, 'utf-8');
+    const match = config.match(/project_name\s*=\s*"([^"]+)"/);
+    return match?.[1]?.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function findPinmeConfig(startPath: string): string | undefined {
+  try {
+    let current = fs.statSync(startPath).isDirectory()
+      ? startPath
+      : path.dirname(startPath);
+
+    while (true) {
+      const configPath = path.join(current, 'pinme.toml');
+      if (fs.existsSync(configPath)) {
+        return configPath;
+      }
+
+      const parent = path.dirname(current);
+      if (parent === current) {
+        return undefined;
+      }
+      current = parent;
+    }
+  } catch {
+    return undefined;
+  }
+}
+
+function shouldInferProjectNameFromUploadPath(targetPath: string): boolean {
+  try {
+    return (
+      fs.statSync(targetPath).isDirectory() &&
+      path.basename(targetPath) === 'dist'
+    );
+  } catch {
+    return false;
+  }
+}
+
+function resolveUploadProjectName(targetPath: string): string | undefined {
+  if (APP_CONFIG.pinmeProjectName) {
+    return APP_CONFIG.pinmeProjectName;
+  }
+
+  if (!shouldInferProjectNameFromUploadPath(targetPath)) {
+    return undefined;
+  }
+
+  const configPaths = [
+    findPinmeConfig(targetPath),
+    findPinmeConfig(process.cwd()),
+  ].filter(
+    (value, index, values): value is string =>
+      Boolean(value) && values.indexOf(value) === index,
+  );
+
+  for (const configPath of configPaths) {
+    const projectName = readProjectNameFromConfig(configPath);
+    if (projectName) {
+      return projectName;
+    }
+  }
+
+  return undefined;
 }
 
 function getDomainFromArgs(): string | null {
@@ -218,6 +291,10 @@ export default async (options?: UploadOptions): Promise<void> => {
         return;
       }
       const pathKind = getPathKind(absolutePath);
+      const projectName = resolveUploadProjectName(absolutePath);
+      if (projectName) {
+        console.log(chalk.gray(`Project: ${projectName}`));
+      }
 
       // Auto-detect domain type
       const isDns = dnsArg || (domainArg ? isDnsDomain(domainArg) : false);
@@ -280,7 +357,7 @@ export default async (options?: UploadOptions): Promise<void> => {
       let result;
       try {
         result = await uploadPath(absolutePath, {
-          projectName: APP_CONFIG.pinmeProjectName,
+          projectName,
           uid: authConfig?.address,
         });
       } catch (error: any) {
@@ -309,13 +386,13 @@ export default async (options?: UploadOptions): Promise<void> => {
         a: resolveTrackAction(TRACK_EVENTS.uploadSuccess),
         path_kind: pathKind,
         has_domain: Boolean(domainArg),
-        project_name: APP_CONFIG.pinmeProjectName,
+        project_name: projectName,
       });
 
       console.log(
         chalk.cyan(figlet.textSync('Successful', { horizontalLayout: 'full' })),
       );
-      await printUploadUrls(result);
+      await printUploadUrls(result, projectName);
 
       // optional: bind domain after upload
       if (domainArg) {
@@ -354,6 +431,10 @@ export default async (options?: UploadOptions): Promise<void> => {
         return;
       }
       const pathKind = getPathKind(absolutePath);
+      const projectName = resolveUploadProjectName(absolutePath);
+      if (projectName) {
+        console.log(chalk.gray(`Project: ${projectName}`));
+      }
 
       // Auto-detect domain type
       const isDns = dnsArg || (domainArg ? isDnsDomain(domainArg) : false);
@@ -416,7 +497,7 @@ export default async (options?: UploadOptions): Promise<void> => {
       let result;
       try {
         result = await uploadPath(absolutePath, {
-          projectName: APP_CONFIG.pinmeProjectName,
+          projectName,
           uid: authConfig?.address,
         });
       } catch (error: any) {
@@ -445,13 +526,13 @@ export default async (options?: UploadOptions): Promise<void> => {
         a: resolveTrackAction(TRACK_EVENTS.uploadSuccess),
         path_kind: pathKind,
         has_domain: Boolean(domainArg),
-        project_name: APP_CONFIG.pinmeProjectName,
+        project_name: projectName,
       });
 
       console.log(
         chalk.cyan(figlet.textSync('Successful', { horizontalLayout: 'full' })),
       );
-      await printUploadUrls(result);
+      await printUploadUrls(result, projectName);
       if (domainArg) {
         console.log(
           chalk.blue(
