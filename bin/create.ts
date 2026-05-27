@@ -6,7 +6,7 @@ import axios from 'axios';
 import AdmZip from 'adm-zip';
 import { execSync } from 'child_process';
 import { getAuthHeaders } from './utils/webLogin';
-import { installProjectDependencies } from './utils/installProjectDependencies';
+import { DependencyInstallError, installProjectDependencies } from './utils/installProjectDependencies';
 import {
   createApiError,
   createCommandError,
@@ -388,30 +388,23 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       console.log(chalk.green('   Project dependencies installed'));
     } catch (error: any) {
       const errorMsg = error.message || '';
+      const installCommand = error instanceof DependencyInstallError
+        ? error.command
+        : 'npm ci/npm install --cache <isolated npm cache> --no-audit --no-fund';
       
       // Check for common permission errors
       if (errorMsg.includes('EACCES') || errorMsg.includes('EPERM') || errorMsg.includes('permission denied')) {
-        throw createCommandError('project dependency install', 'npm install', error, [
-          'Permission error detected. Here are some solutions:',
-          '',
-          'Option 1: Fix npm permissions (Recommended)',
-          '  mkdir -p ~/.npm-global',
-          '  npm config set prefix ~/.npm-global',
-          '  Then add ~/.npm-global/bin to your PATH in ~/.bashrc or ~/.zshrc',
-          '',
-          'Option 2: Use npx to avoid global installs',
-          '  npx npm install',
-          '',
-          'Option 3: Check if you have write permissions',
+        throw createCommandError('project dependency install', installCommand, error, [
+          'Permission error detected. Pinme already retries with an isolated npm cache.',
+          'Check whether the project directory is writable:',
           '  ls -la ' + targetDir,
-          '',
-          'For more help: https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally',
+          'If npm still reports a root-owned cache, set `npm_config_cache` to a user-writable directory and retry.',
         ]);
       }
       
       // Check for network errors
       if (errorMsg.includes('ENOTFOUND') || errorMsg.includes('ETIMEDOUT') || errorMsg.includes('network')) {
-        throw createCommandError('project dependency install', 'npm install', error, [
+        throw createCommandError('project dependency install', installCommand, error, [
           'Network error detected. Please check:',
           '  1. Internet connection is available',
           '  2. npm registry is accessible (https://registry.npmjs.org)',
@@ -420,14 +413,11 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       }
       
       // Generic error
-      throw createCommandError('project dependency install', 'npm install', error, [
+      throw createCommandError('project dependency install', installCommand, error, [
         'Dependency installation failed.',
         'Check network connectivity and npm registry availability.',
         'Inspect the generated workspace `package.json` files for dependency conflicts.',
-        '',
-        'If this is a permission issue, try:',
-        '  sudo chown -R $(whoami) ~/.npm',
-        '  sudo chown -R $(whoami) ' + targetDir + '/node_modules',
+        'If `package-lock.json` is stale, update it intentionally with `npm install` before retrying.',
       ]);
     }
 
