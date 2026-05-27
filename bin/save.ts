@@ -297,6 +297,7 @@ async function deployFrontend(projectName: string): Promise<{ contentHash: strin
   try {
     const headers = getAuthHeaders();
     const uploadResult = await uploadPath(path.join(PROJECT_DIR, 'frontend', 'dist'), {
+      action: 'project_save',
       projectName,
       uid: headers['token-address'],
     });

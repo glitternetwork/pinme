@@ -69,6 +69,7 @@ async function deployFrontend(projectName: string): Promise<void> {
   try {
     const headers = getAuthHeaders();
     const uploadResult = await uploadPath(path.join(PROJECT_DIR, 'frontend', 'dist'), {
+      action: 'project_update_web',
       projectName,
       uid: headers['token-address'],
     });

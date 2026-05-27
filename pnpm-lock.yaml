@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      adm-zip:
+        specifier: ^0.5.17
+        version: 0.5.17
       archiver:
         specifier: 7.0.1
         version: 7.0.1
@@ -66,6 +69,9 @@ importers:
       '@rollup/plugin-node-resolve':
         specifier: 14.1.0
         version: 14.1.0(rollup@2.79.2)
+      '@types/adm-zip':
+        specifier: ^0.5.8
+        version: 0.5.8
       dotenv:
         specifier: 16.5.0
         version: 16.5.0
@@ -439,6 +445,9 @@ packages:
     peerDependencies:
       rollup: ^1.20.0||^2.0.0
 
+  '@types/adm-zip@0.5.8':
+    resolution: {integrity: sha512-RVVH7QvZYbN+ihqZ4kX/dMiowf6o+Jk1fNwiSdx0NahBJLU787zkULhGhJM8mf/obmLGmgdMM0bXsQTmyfbR7Q==}
+
   '@types/estree@0.0.39':
     resolution: {integrity: sha512-EYNwp3bU+98cpU4lAWYYL7Zz+2gryWH1qbdDTidVd6hkiR6weksdbMadyXKXNPEkQFhXM+hVO9ZygomHXp+AIw==}
 
@@ -476,6 +485,10 @@ packages:
     resolution: {integrity: sha512-xjIYgE8HBrkpd/sJqOGNspf8uHG+NOHGOw6a/Urj8taM2EXfdNAH2oFcPeIFfsv3+kz/mJrS5VuMqbNLjCa2vw==}
     engines: {node: '>=0.4.0'}
     hasBin: true
+
+  adm-zip@0.5.17:
+    resolution: {integrity: sha512-+Ut8d9LLqwEvHHJl1+PIHqoyDxFgVN847JTVM3Izi3xHDWPE4UtzzXysMZQs64DMcrJfBeS/uoEP4AD3HQHnQQ==}
+    engines: {node: '>=12.0'}
 
   aes-js@3.0.0:
     resolution: {integrity: sha512-H7wUZRn8WpTq9jocdxQ2c8x2sKo9ZVmzfRE13GiNJXfp7NcKYEdvl3vspKjXox6RIG2VtaRe4JFvxG4rqp2Zuw==}
@@ -2252,6 +2265,10 @@ snapshots:
       picomatch: 2.3.1
       rollup: 2.79.2
 
+  '@types/adm-zip@0.5.8':
+    dependencies:
+      '@types/node': 16.18.12
+
   '@types/estree@0.0.39': {}
 
   '@types/estree@1.0.7': {}
@@ -2284,6 +2301,8 @@ snapshots:
       acorn: 8.8.2
 
   acorn@8.8.2: {}
+
+  adm-zip@0.5.17: {}
 
   aes-js@3.0.0: {}
 

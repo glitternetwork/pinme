@@ -1,11 +1,13 @@
 import CryptoJS from 'crypto-js';
 import { getUid } from '../utils/getDeviceId';
 import uploadToIpfsSplit from '../utils/uploadToIpfsSplit';
+import type { UploadAction } from '../utils/uploadToIpfsSplit';
 import { APP_CONFIG } from '../utils/config';
 import { getRootDomain } from '../utils/pinmeApi';
 import { getAuthConfig } from '../utils/webLogin';
 
 export interface UploadServiceOptions {
+  action?: UploadAction;
   importAsCar?: boolean;
   projectName?: string;
   uid?: string;
@@ -122,6 +124,7 @@ export async function uploadPath(
   }
 
   const result = await uploadToIpfsSplit(targetPath, {
+    action: options.action,
     importAsCar: options.importAsCar,
     projectName: options.projectName,
     uid: options.uid || authConfig.address,
