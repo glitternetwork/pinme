@@ -80,7 +80,16 @@ interface UploadResult {
   dnsUrl?: string;
 }
 
+export type UploadAction =
+  | 'upload'
+  | 'bind'
+  | 'import'
+  | 'project_create'
+  | 'project_save'
+  | 'project_update_web';
+
 interface UploadExecutionOptions {
+  action?: UploadAction;
   importAsCar?: boolean;
   projectName?: string;
   uid?: string;
@@ -613,7 +622,9 @@ async function completeChunkUpload(
   options: UploadExecutionOptions = {},
 ): Promise<string> {
   try {
-    const requestBody: any = { session_id: sessionId, uid: deviceId };
+    const action =
+      options.action || (options.importAsCar ? 'import' : 'upload');
+    const requestBody: any = { session_id: sessionId, uid: deviceId, action };
     const projectName = options.projectName?.trim();
     const authHeaders = getUploadAuthHeaders();
     if (options.importAsCar) {

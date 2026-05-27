@@ -1,4 +1,5 @@
 import uploadToIpfsSplit from './uploadToIpfsSplit';
+import type { UploadAction } from './uploadToIpfsSplit';
 
 /**
  * @deprecated Legacy upload entry kept for compatibility.
@@ -6,7 +7,11 @@ import uploadToIpfsSplit from './uploadToIpfsSplit';
  */
 export default async function uploadToIpfs(
   filePath: string,
-  options?: { importAsCar?: boolean; projectName?: string },
+  options?: {
+    action?: UploadAction;
+    importAsCar?: boolean;
+    projectName?: string;
+  },
 ): Promise<{
   contentHash: string;
   shortUrl?: string;

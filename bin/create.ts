@@ -3,6 +3,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import inquirer from 'inquirer';
 import axios from 'axios';
+import AdmZip from 'adm-zip';
 import { execSync } from 'child_process';
 import { getAuthHeaders } from './utils/webLogin';
 import { installProjectDependencies } from './utils/installProjectDependencies';
@@ -243,10 +244,9 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
     try {
       fs.ensureDirSync(extractDir);
 
-      // Unzip to target directory
-      execSync(`unzip -o "${zipPath}" -d "${extractDir}"`, {
-        stdio: 'inherit',
-      });
+      // Extract with Node so Windows users do not need a system `unzip` command.
+      const templateZip = new AdmZip(zipPath);
+      templateZip.extractAllTo(extractDir, true);
       
       // Move files from extracted subdirectory to target directory
       const subDir = resolveExtractedTemplateDir(extractDir);
@@ -280,8 +280,8 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       
       console.log(chalk.green(`   Template downloaded to: ${targetDir}`));
     } catch (error: any) {
-      throw createCommandError('template extraction', `unzip -o "${zipPath}" -d "${PROJECT_DIR}"`, error, [
-        'Check whether `unzip` is available and the downloaded template archive is valid.',
+      throw createCommandError('template extraction', `extract "${zipPath}" to "${extractDir}"`, error, [
+        'Check whether the downloaded template archive is valid and has the expected GitHub archive structure.',
       ]);
     }
 
@@ -569,6 +569,7 @@ export default async function createCmd(options: CreateOptions): Promise<void> {
       console.log(chalk.blue('   Uploading to IPFS...'));
       try {
         const uploadResult = await uploadPath(path.join(frontendDir, 'dist'), {
+          action: 'project_create',
           projectName: workerData.project_name,
           uid: headers['token-address'],
         });

@@ -139,6 +139,7 @@ export default async (options?: ImportOptions): Promise<void> => {
       console.log(chalk.blue(`importing ${absolutePath} to ipfs as CAR...`));
       try {
         const result = await uploadPath(absolutePath, {
+          action: 'import',
           importAsCar: true,
           uid: getUid(),
         });
@@ -245,6 +246,7 @@ export default async (options?: ImportOptions): Promise<void> => {
       console.log(chalk.blue(`importing ${absolutePath} to ipfs as CAR...`));
       try {
         const result = await uploadPath(absolutePath, {
+          action: 'import',
           importAsCar: true,
           uid: getUid(),
         });

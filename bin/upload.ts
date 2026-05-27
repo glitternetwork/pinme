@@ -357,6 +357,7 @@ export default async (options?: UploadOptions): Promise<void> => {
       let result;
       try {
         result = await uploadPath(absolutePath, {
+          action: 'upload',
           projectName,
           uid: authConfig?.address,
         });
@@ -497,6 +498,7 @@ export default async (options?: UploadOptions): Promise<void> => {
       let result;
       try {
         result = await uploadPath(absolutePath, {
+          action: 'upload',
           projectName,
           uid: authConfig?.address,
         });
