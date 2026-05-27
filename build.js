@@ -3,7 +3,10 @@ const esbuild = require('esbuild');
 
 const define = {};
 for (const key in process.env) {
-  define[`process.env.${key}`] = JSON.stringify(process.env[key]);
+  // Skip env vars with invalid identifier characters (e.g., Windows vars like ProgramFiles(x86))
+  if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)) {
+    define[`process.env.${key}`] = JSON.stringify(process.env[key]);
+  }
 }
 
 define['process.env.IPFS_PREVIEW_URL'] = JSON.stringify(process.env.IPFS_PREVIEW_URL);
