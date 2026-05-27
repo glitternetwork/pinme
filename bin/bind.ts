@@ -174,7 +174,10 @@ export default async function bindCmd(): Promise<void> {
     // Upload
     const absolutePath = path.resolve(targetPath);
     console.log(chalk.blue(`Uploading: ${absolutePath}`));
-    const up = await uploadPath(absolutePath, { uid: authConfig.address });
+    const up = await uploadPath(absolutePath, {
+      action: 'bind',
+      uid: authConfig.address,
+    });
     if (!up?.contentHash) {
       void tracker.trackEvent(TRACK_EVENTS.uploadFailed, TRACK_PAGES.upload, {
         a: resolveTrackAction(TRACK_EVENTS.uploadFailed),
