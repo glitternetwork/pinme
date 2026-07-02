@@ -1,9 +1,7 @@
-import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
 import { version } from '../../package.json';
-import { getUid } from './getDeviceId';
 
 export interface TrackData {
   [key: string]: string | number | boolean | null | undefined;
@@ -14,6 +12,28 @@ const TRACK_VALUE_LIMIT = 200;
 const TRACK_REASON_LIMIT = 255;
 const DEFAULT_GATEWAY = 'https://pinme.dev';
 const DEFAULT_PRODUCT = 'pinme-cli';
+const DEFAULT_SOURCE = 'cli';
+const TRACK_CONTEXT_KEYS = new Set([
+  'pd',
+  'product',
+  'p',
+  'page_type',
+  'ev',
+  'event_type',
+  'a',
+  'action',
+  're',
+  'request_error',
+  'reason',
+  'rct',
+  'request_cost_time',
+  'rr',
+  'request_requery',
+  's',
+  'source',
+  'k',
+  'keyword',
+]);
 
 const ACTION_OVERRIDES: Record<string, string> = {
   cli_login_success: 'success',
@@ -29,13 +49,6 @@ const ACTION_OVERRIDES: Record<string, string> = {
   upload_history_viewed: 'view',
   upload_history_cleared: 'click',
   upload_history_failed: 'fail',
-};
-
-const EV_OVERRIDES: Record<string, string> = {
-  upload_success: 'upload',
-  upload_failed: 'upload',
-  project_save_success: 'project_save',
-  project_save_failed: 'project_save',
 };
 
 const TRACK_CHILD_SCRIPT = `
@@ -211,13 +224,21 @@ function resolveTrackAction(event: string, data: TrackData = {}): string {
 }
 
 function resolveTrackEvent(event: string): string {
-  return EV_OVERRIDES[event] || event;
+  const explicitEvent = dataStringValue(event);
+  if (!explicitEvent) {
+    return 'unknown';
+  }
+
+  return explicitEvent
+    .replace(/_(success|failed|fail|started|submit|viewed|cleared)$/, '')
+    .replace(/^cli_/, '');
 }
 
-function resolveTrackReason(
-  data: TrackData,
+function dataStringValue(
+  value: unknown,
+  maxLength = TRACK_VALUE_LIMIT,
 ): string | undefined {
-  return sanitizeTrackValue(data.re || data.reason, TRACK_REASON_LIMIT);
+  return sanitizeTrackValue(value, maxLength);
 }
 
 interface ProjectContext {
@@ -276,6 +297,160 @@ export function getPathKind(pathValue: string): string {
   return 'unknown';
 }
 
+function resolveTrackField(
+  data: TrackData,
+  shortKey: string,
+  longKey: string,
+  fallback?: unknown,
+): string | undefined {
+  return dataStringValue(data[shortKey] ?? data[longKey] ?? fallback);
+}
+
+function collectTrackDetails(
+  data: TrackData,
+  projectContext?: ProjectContext,
+): Record<string, string | number | boolean> {
+  const details: Record<string, string | number | boolean> = {};
+
+  const reason = dataStringValue(
+    data.re ?? data.request_error ?? data.reason,
+    TRACK_REASON_LIMIT,
+  );
+  if (reason) {
+    details.reason = reason;
+  }
+
+  for (const [key, value] of Object.entries(data)) {
+    if (TRACK_CONTEXT_KEYS.has(key) || value === undefined || value === null) {
+      continue;
+    }
+    details[key] = value;
+  }
+
+  if (projectContext?.projectName && details.project_name === undefined) {
+    details.project_name = projectContext.projectName;
+  }
+  if (projectContext?.projectDir && details.project_dir === undefined) {
+    details.project_dir = projectContext.projectDir;
+  }
+  if (details.cli_version === undefined) {
+    details.cli_version = version;
+  }
+
+  return details;
+}
+
+function stringifyTrackDetails(
+  details: Record<string, string | number | boolean>,
+): string | undefined {
+  const entries = Object.entries(details);
+  if (entries.length === 0) {
+    return undefined;
+  }
+
+  const build = (nextEntries: [string, string | number | boolean][]) =>
+    JSON.stringify(Object.fromEntries(nextEntries));
+
+  let result = build(entries);
+  if (result.length <= TRACK_REASON_LIMIT) {
+    return result;
+  }
+
+  const reasonIndex = entries.findIndex(([key]) => key === 'reason');
+  if (reasonIndex >= 0) {
+    const originalReason = String(entries[reasonIndex][1]);
+    let low = 0;
+    let high = originalReason.length;
+    let best = '';
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      const candidateEntries = entries.map((entry, index) =>
+        index === reasonIndex
+          ? ([entry[0], originalReason.slice(0, mid)] as [string, string])
+          : entry,
+      );
+      const candidate = build(candidateEntries);
+
+      if (candidate.length <= TRACK_REASON_LIMIT) {
+        best = originalReason.slice(0, mid);
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    entries[reasonIndex] = ['reason', best];
+    result = build(entries);
+    if (result.length <= TRACK_REASON_LIMIT) {
+      return result;
+    }
+  }
+
+  let compactEntries = entries;
+  while (compactEntries.length > 0) {
+    const removableIndex = [...compactEntries]
+      .reverse()
+      .findIndex(([key]) => key !== 'reason');
+    if (removableIndex < 0) {
+      break;
+    }
+
+    compactEntries = compactEntries.filter(
+      (_, index) => index !== compactEntries.length - 1 - removableIndex,
+    );
+    result = build(compactEntries);
+    if (result.length <= TRACK_REASON_LIMIT) {
+      return result;
+    }
+  }
+
+  return sanitizeTrackValue(result, TRACK_REASON_LIMIT);
+}
+
+export function buildTrackPayload(
+  event: string,
+  page: string,
+  data: TrackData = {},
+  options: {
+    product?: string;
+    source?: string;
+    projectContext?: ProjectContext;
+  } = {},
+): Record<string, string> {
+  const payload: TrackData = {
+    pd: resolveTrackField(
+      data,
+      'pd',
+      'product',
+      options.product || DEFAULT_PRODUCT,
+    ),
+    p: resolveTrackField(data, 'p', 'page_type', page),
+    ev: resolveTrackField(data, 'ev', 'event_type', resolveTrackEvent(event)),
+    a: resolveTrackField(data, 'a', 'action', resolveTrackAction(event, data)),
+    re: stringifyTrackDetails(
+      collectTrackDetails(data, options.projectContext),
+    ),
+    rct: resolveTrackField(data, 'rct', 'request_cost_time'),
+    rr: resolveTrackField(data, 'rr', 'request_requery'),
+    s: resolveTrackField(data, 's', 'source', options.source || DEFAULT_SOURCE),
+    k: resolveTrackField(data, 'k', 'keyword'),
+  };
+
+  const filtered: Record<string, string> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    const normalized = sanitizeTrackValue(
+      value,
+      key === 're' ? TRACK_REASON_LIMIT : TRACK_VALUE_LIMIT,
+    );
+    if (normalized) {
+      filtered[key] = normalized;
+    }
+  }
+
+  return filtered;
+}
+
 class Tracker {
   private static instance: Tracker;
   private readonly gateway: string;
@@ -309,7 +484,11 @@ class Tracker {
     }
 
     try {
-      const payload = this.buildPayload(event, page, data);
+      const payload = buildTrackPayload(event, page, data, {
+        product: this.product,
+        source: this.source,
+        projectContext: resolveProjectContext(),
+      });
       const params = new URLSearchParams(payload).toString();
       const url = `${this.gateway}/track.gif?${params}`;
       this.dispatch(url);
@@ -319,47 +498,6 @@ class Tracker {
 
     return Promise.resolve();
   }
-
-  private buildPayload(
-    event: string,
-    page: string,
-    data: TrackData,
-  ): Record<string, string> {
-    const projectContext = resolveProjectContext();
-    const action = resolveTrackAction(event, data);
-    const ev = resolveTrackEvent(event);
-    const payload: TrackData = {
-      ...data,
-      u: getUid(),
-      s: this.source,
-      pd: this.product,
-      p: page,
-      a: action,
-      ev,
-      event,
-      re: resolveTrackReason(data),
-      project_name: projectContext.projectName || data.project_name,
-      project_dir: projectContext.projectDir,
-      cli_version: version,
-      node_version: process.version,
-      os: os.platform(),
-      arch: os.arch(),
-    };
-
-    const filtered: Record<string, string> = {};
-    for (const [key, value] of Object.entries(payload)) {
-      const normalized = sanitizeTrackValue(
-        value,
-        key === 're' ? TRACK_REASON_LIMIT : TRACK_VALUE_LIMIT,
-      );
-      if (normalized) {
-        filtered[key] = normalized;
-      }
-    }
-
-    return filtered;
-  }
-
   private dispatch(url: string): void {
     const child = spawn(process.execPath, ['-e', TRACK_CHILD_SCRIPT, url], {
       detached: true,
