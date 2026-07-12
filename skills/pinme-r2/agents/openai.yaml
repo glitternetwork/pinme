@@ -1,0 +1,4 @@
+interface:
+  display_name: "PinMe R2"
+  short_description: "Build secure R2 file storage in PinMe Workers"
+  default_prompt: "Use $pinme-r2 to add secure, streaming file storage routes to my PinMe Worker."

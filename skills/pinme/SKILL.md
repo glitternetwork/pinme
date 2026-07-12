@@ -115,6 +115,11 @@ digraph fullstack_flow {
 | Frontend | React + Vite (`frontend/`) | IPFS |
 | Backend | Cloudflare Worker (`backend/src/worker.ts`) | `{name}.pinme.pro` |
 | Database | D1 SQLite (`db/*.sql`) | Cloudflare D1 |
+| Object storage | R2 (`env.R2`) | Cloudflare R2 |
+
+### Capability-Specific Skills
+
+- For Worker file uploads, downloads, images, attachments, media, or object storage, use the `pinme-r2` skill. PinMe injects the project bucket as `env.R2`; do not replace it with D1 BLOBs or Worker filesystem state.
 
 ### Core Commands
 
@@ -206,6 +211,7 @@ In this template, the Worker backend is primarily used for JSON APIs. Prefer sta
 ```typescript
 export interface Env {
   DB: D1Database;           // When using database
+  R2: R2Bucket;             // Project object storage; injected by PinMe
   API_KEY?: string;         // When using email sending
   JWT_SECRET: string;       // When using JWT auth
   ADMIN_PASSWORD: string;   // When using password auth
@@ -356,7 +362,7 @@ if (meta.changes === 0) return json({ error: 'Not found' }, 404);
 
 | Scenario | Default Suggestion |
 |-----------|-------------|
-| File storage (image uploads) | Store external image URLs, or upload with `pinme upload` first and then store the resulting link |
+| File storage (images, attachments, media) | Use the project R2 binding through `env.R2`; use the `pinme-r2` skill for secure routes and metadata patterns |
 | Real-time communication | This template defaults to regular HTTP APIs. If there is no clear real-time requirement, start with polling |
 | Multiple Workers | This template defaults to combining functionality into a single Worker and separating routes by prefix |
 | Multiple databases | This template defaults to combining data into one D1 database and only splitting when isolation is truly needed |
