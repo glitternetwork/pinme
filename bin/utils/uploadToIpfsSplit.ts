@@ -398,6 +398,8 @@ async function initChunkSession(
       md5: md5,
       is_directory: isDirectory,
       uid: deviceId,
+      token_address: authHeaders['token-address'],
+      auth_token: authHeaders['authentication-tokens'],
     };
 
     if (projectName) {

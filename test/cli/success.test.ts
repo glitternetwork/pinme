@@ -81,6 +81,8 @@ describe('pinme CLI success paths with local APIs', () => {
           file_name: 'index.html',
           is_directory: false,
           uid: '0x1234567890abcdef',
+          token_address: '0x1234567890abcdef',
+          auth_token: 'test-token',
         });
         response.writeHead(200, { 'Content-Type': 'application/json' });
         response.end(
@@ -119,6 +121,8 @@ describe('pinme CLI success paths with local APIs', () => {
           uid: '0x1234567890abcdef',
           action: 'upload',
         });
+        expect(JSON.parse(bodyText)).not.toHaveProperty('token_address');
+        expect(JSON.parse(bodyText)).not.toHaveProperty('auth_token');
         response.writeHead(200, { 'Content-Type': 'application/json' });
         response.end(
           JSON.stringify({
