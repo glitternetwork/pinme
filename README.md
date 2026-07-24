@@ -30,6 +30,7 @@ Website: [https://pinme.eth.limo/](https://pinme.eth.limo/)
 - [Quick Start](#quick-start)
 - [For AI Agents](#for-ai-agents)
 - [Installation](#installation)
+- [Desktop Client Downloads](#desktop-client-downloads)
 - [PinMe Project Workflow](#pinme-project-workflow)
 - [Authentication and Account Commands](#authentication-and-account-commands)
 - [Static Uploads and IPFS Utilities](#static-uploads-and-ipfs-utilities)
@@ -168,6 +169,15 @@ Verify installation:
 ```bash
 pinme --version
 ```
+
+## Desktop Client Downloads
+
+PinMe Client `0.1.4` is available for macOS Apple Silicon and Windows x64:
+
+| Platform | Installer |
+| --- | --- |
+| macOS Apple Silicon | [Download `PinMe_0.1.4_aarch64.dmg`](https://5004f03d.pinit.eth.limo/PinMe_0.1.4_aarch64.dmg) |
+| Windows x64 | [Download `PinMe_0.1.4_x64-setup.exe`](https://6240d70b.pinit.eth.limo/PinMe_0.1.4_x64-setup.exe) |
 
 ## PinMe Project Workflow
 
