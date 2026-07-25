@@ -172,12 +172,12 @@ pinme --version
 
 ## Desktop Client Downloads
 
-PinMe Client `0.1.4` is available for macOS Apple Silicon and Windows x64:
+PinMe Client `0.1.5` is available for macOS Apple Silicon and Windows x64:
 
 | Platform | Installer |
 | --- | --- |
-| macOS Apple Silicon | [Download `PinMe_0.1.4_aarch64.dmg`](https://5004f03d.pinit.eth.limo/PinMe_0.1.4_aarch64.dmg) |
-| Windows x64 | [Download `PinMe_0.1.4_x64-setup.exe`](https://6240d70b.pinit.eth.limo/PinMe_0.1.4_x64-setup.exe) |
+| macOS Apple Silicon | [Download `PinMe_0.1.5_aarch64.dmg`](https://36598aaa.pinme.dev/PinMe_0.1.5_aarch64.dmg) |
+| Windows x64 | [Download `PinMe_0.1.5_x64-setup.exe`](https://abb42d6b.pinme.dev/PinMe_0.1.5_x64-setup.exe) |
 
 ## PinMe Project Workflow
 
