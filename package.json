@@ -13,10 +13,12 @@
     "typecheck": "tsc --noEmit --project tsconfig.test.json",
     "test": "NODE_OPTIONS=--require=$PWD/test/setup/webcrypto.cjs vitest run test/unit test/integration test/login-tracking-source.test.mjs tests",
     "test:coverage": "NODE_OPTIONS=--require=$PWD/test/setup/webcrypto.cjs vitest run --coverage test/unit test/integration test/login-tracking-source.test.mjs tests",
-    "test:cli": "npm run build && NODE_OPTIONS=--require=$PWD/test/setup/webcrypto.cjs vitest run test/cli",
-    "test:pack": "npm run build && NODE_OPTIONS=--require=$PWD/test/setup/webcrypto.cjs vitest run test/pack",
+    "test:cli": "npm run build && npm run test:cli:built",
+    "test:cli:built": "NODE_OPTIONS=--require=$PWD/test/setup/webcrypto.cjs vitest run test/cli",
+    "test:pack": "npm run build && npm run test:pack:built",
+    "test:pack:built": "NODE_OPTIONS=--require=$PWD/test/setup/webcrypto.cjs vitest run test/pack",
     "test:mutation": "stryker run",
-    "verify": "npm run lint && npm run typecheck && npm run test && npm run test:coverage && npm run build && npm run test:cli && npm run test:pack",
+    "verify": "npm run lint && npm run typecheck && npm run test:coverage && npm run build && npm run test:cli:built && npm run test:pack:built",
     "prepublishOnly": "npm run build"
   },
   "bin": {

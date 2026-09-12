@@ -17,6 +17,11 @@ npm run verify         # Full PR gate: lint, typecheck, tests, build, CLI, pack
 npm run test:mutation  # Slow mutation tests (manual/nightly)
 ```
 
+`verify` runs the core tests once with coverage and builds the CLI once before
+running `test:cli:built` and `test:pack:built` against that bundle. These `:built`
+commands require an existing, up-to-date build; use `test:cli` or `test:pack` for
+standalone runs that build automatically.
+
 Build uses `build.js` (esbuild), NOT `rollup.config.js` (legacy, unused). esbuild reads `.env` via dotenv at build time and injects env vars as `process.env.*` defines.
 
 The output is a single CJS file at `dist/index.js` with a shebang, used as the `pinme` CLI binary.
