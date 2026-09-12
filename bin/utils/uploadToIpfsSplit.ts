@@ -14,6 +14,7 @@ import { saveUploadHistory } from './history';
 import { getUid } from './getDeviceId';
 import { getAuthHeaders } from './webLogin';
 import { APP_CONFIG } from './config';
+import { delayWithAbortCheck } from './delayWithAbortCheck';
 
 // Configuration constants
 const IPFS_API_URL = APP_CONFIG.ipfsApiUrl;
@@ -515,35 +516,6 @@ async function uploadChunkWithAbort(
       }`,
     );
   }
-}
-
-async function delayWithAbortCheck(
-  delay: number,
-  signal: AbortSignal,
-): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      if (signal.aborted) {
-        reject(new Error('Request cancelled'));
-      } else {
-        resolve();
-      }
-    }, delay);
-
-    if (signal.aborted) {
-      clearTimeout(timeoutId);
-      reject(new Error('Request cancelled'));
-      return;
-    }
-
-    const checkInterval = setInterval(() => {
-      if (signal.aborted) {
-        clearTimeout(timeoutId);
-        clearInterval(checkInterval);
-        reject(new Error('Request cancelled'));
-      }
-    }, 50);
-  });
 }
 
 async function runTasksWithConcurrency(
